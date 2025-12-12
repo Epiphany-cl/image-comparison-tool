@@ -1,34 +1,19 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-
-// 加载字体资源
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 // 页面元数据配置
 export const metadata: Metadata = {
   title: "图片对比工具",
   description: "一款支持同步缩放和平移的图片对比工具",
-  generator: "v0.app",
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
       {
         url: "/icon.svg",
         type: "image/svg+xml",
       },
     ],
-    apple: "/apple-icon.png",
   },
 }
 
@@ -57,7 +42,6 @@ export default function RootLayout({
       </head>
       <body className={`font-sans antialiased`}>
         {children}
-        <Analytics />
       </body>
     </html>
   )
