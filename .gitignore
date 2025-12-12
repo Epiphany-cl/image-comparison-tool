@@ -1,0 +1,5 @@
+node_modules
+.next
+.trae
+package-lock.json
+.DS_Store
