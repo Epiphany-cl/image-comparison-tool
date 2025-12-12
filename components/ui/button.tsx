@@ -4,6 +4,10 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
+/**
+ * 按钮组件的样式变体定义
+ * 使用class-variance-authority库定义不同变体和尺寸的按钮样式
+ */
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
@@ -36,6 +40,15 @@ const buttonVariants = cva(
   },
 )
 
+/**
+ * 按钮组件
+ * 支持多种样式变体和尺寸，可作为普通按钮或子元素渲染器使用
+ * @param className 自定义CSS类名
+ * @param variant 按钮样式变体
+ * @param size 按钮尺寸
+ * @param asChild 是否作为子元素渲染器使用
+ * @param props 其他按钮属性
+ */
 function Button({
   className,
   variant,
@@ -46,6 +59,7 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
+  // 根据asChild属性决定使用原生button标签还是Slot组件
   const Comp = asChild ? Slot : 'button'
 
   return (

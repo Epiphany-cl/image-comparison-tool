@@ -4,9 +4,11 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
+// 加载字体资源
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
+// 页面元数据配置
 export const metadata: Metadata = {
   title: "图片对比工具",
   description: "一款支持同步缩放和平移的图片对比工具",
@@ -30,6 +32,10 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * 应用根布局组件
+ * 设置全局样式、字体和主题初始化脚本
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

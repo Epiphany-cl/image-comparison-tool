@@ -1,5 +1,13 @@
+# 依赖目录
 node_modules
-.next
-.trae
 package-lock.json
+
+# 构建输出
+.next
+out
+
+# 系统文件
 .DS_Store
+
+# IDE/工具
+.trae

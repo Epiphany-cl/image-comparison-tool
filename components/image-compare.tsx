@@ -7,32 +7,44 @@ import { ZoomIn, ZoomOut, RotateCcw, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+// 视图状态接口，用于管理图片的缩放和平移
 interface ViewState {
-  scale: number
-  offsetX: number
-  offsetY: number
+  scale: number      // 缩放比例
+  offsetX: number    // X轴偏移量
+  offsetY: number    // Y轴偏移量
 }
 
+// 图片信息接口，存储图片的基本信息
 interface ImageInfo {
-  src: string
-  width: number
-  height: number
-  baseScale: number
+  src: string        // 图片数据URL
+  width: number      // 图片原始宽度
+  height: number     // 图片原始高度
+  baseScale: number  // 基础缩放比例（使图片适应容器）
 }
 
+// 图片面板属性接口
 interface ImagePanelProps {
-  image: ImageInfo | null
-  onUpload: (file: File) => void
-  viewState: ViewState
-  onViewChange: (state: ViewState) => void
-  label: string
+  image: ImageInfo | null      // 图片信息对象
+  onUpload: (file: File) => void  // 上传图片的回调函数
+  viewState: ViewState         // 当前视图状态
+  onViewChange: (state: ViewState) => void  // 视图状态改变的回调函数
+  label: string                // 面板标签（A/B）
 }
 
+/**
+ * 图片面板块组件
+ * 提供图片显示、拖拽上传、缩放和平移功能
+ */
 function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
 
+  /**
+   * 处理拖拽放置事件
+   * 当用户将文件拖拽到面板上时触发，验证文件类型并调用上传回调
+   * @param e 拖拽事件对象
+   */
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
@@ -44,6 +56,11 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
     [onUpload],
   )
 
+  /**
+   * 处理文件输入变化事件
+   * 当用户通过文件选择对话框选择文件时触发
+   * @param e 文件输入变化事件对象
+   */
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
@@ -54,6 +71,11 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
     [onUpload],
   )
 
+  /**
+   * 处理鼠标滚轮事件实现缩放功能
+   * 根据滚轮方向调整缩放比例，并保持鼠标位置相对固定
+   * @param e 鼠标滚轮事件对象
+   */
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault()
@@ -79,13 +101,23 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
     [viewState, onViewChange],
   )
 
+  /**
+   * 处理鼠标按下事件开始拖拽
+   * 记录拖拽起始位置，仅响应左键点击
+   * @param e 鼠标事件对象
+   */
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) {
+    if (e.button === 0) { // 仅处理左键
       isDragging.current = true
       lastPos.current = { x: e.clientX, y: e.clientY }
     }
   }, [])
 
+  /**
+   * 处理鼠标移动事件实现平移功能
+   * 当鼠标拖拽时更新视图偏移量
+   * @param e 鼠标事件对象
+   */
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (isDragging.current) {
@@ -103,14 +135,21 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
     [viewState, onViewChange],
   )
 
+  /**
+   * 处理鼠标释放事件结束拖拽
+   */
   const handleMouseUp = useCallback(() => {
     isDragging.current = false
   }, [])
 
+  /**
+   * 处理鼠标离开事件结束拖拽
+   */
   const handleMouseLeave = useCallback(() => {
     isDragging.current = false
   }, [])
 
+  // 计算实际显示的缩放比例（基础缩放 × 用户缩放）
   const displayScale = image ? viewState.scale * image.baseScale : viewState.scale
 
   return (
@@ -168,16 +207,26 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
   )
 }
 
+/**
+ * 图片对比主组件
+ * 提供双图片对比功能，支持同步缩放、平移和各种操作控件
+ */
 export function ImageCompare() {
+  // 左右图片的状态
   const [leftImage, setLeftImage] = useState<ImageInfo | null>(null)
   const [rightImage, setRightImage] = useState<ImageInfo | null>(null)
+
+  // 视图状态，包括缩放比例和偏移量
   const [viewState, setViewState] = useState<ViewState>({
     scale: 1,
     offsetX: 0,
     offsetY: 0,
   })
+
+  // 容器引用，用于计算图片基础缩放比例
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // 监听系统主题变化，同步更新应用主题
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
 
@@ -189,6 +238,13 @@ export function ImageCompare() {
     return () => mediaQuery.removeEventListener("change", handleChange)
   }, [])
 
+  /**
+   * 计算图片的基础缩放比例
+   * 确保图片能够完整显示在容器内，且不会被不必要地放大
+   * @param imgWidth 图片原始宽度
+   * @param imgHeight 图片原始高度
+   * @returns 基础缩放比例
+   */
   const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
     const container = containerRef.current
     if (!container) return 1
@@ -203,6 +259,12 @@ export function ImageCompare() {
     return Math.min(scaleX, scaleY, 1)
   }, [])
 
+  /**
+   * 处理图片上传
+   * 读取图片文件并设置图片信息状态
+   * @param file 上传的图片文件
+   * @param side 图片所在侧（左/右）
+   */
   const handleUpload = useCallback(
     (file: File, side: "left" | "right") => {
       const reader = new FileReader()
@@ -230,10 +292,16 @@ export function ImageCompare() {
     [calculateBaseScale],
   )
 
+  /**
+   * 重置视图状态到默认值
+   */
   const handleReset = useCallback(() => {
     setViewState({ scale: 1, offsetX: 0, offsetY: 0 })
   }, [])
 
+  /**
+   * 放大视图
+   */
   const handleZoomIn = useCallback(() => {
     setViewState((prev) => ({
       ...prev,
@@ -241,6 +309,9 @@ export function ImageCompare() {
     }))
   }, [])
 
+  /**
+   * 缩小视图
+   */
   const handleZoomOut = useCallback(() => {
     setViewState((prev) => ({
       ...prev,
@@ -248,12 +319,16 @@ export function ImageCompare() {
     }))
   }, [])
 
+  /**
+   * 清空所有图片并重置视图
+   */
   const handleClearAll = useCallback(() => {
     setLeftImage(null)
     setRightImage(null)
     handleReset()
   }, [handleReset])
 
+  // 判断是否有图片已上传
   const hasImages = leftImage || rightImage
 
   return (
