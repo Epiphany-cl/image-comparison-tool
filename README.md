@@ -1,6 +1,7 @@
 # 图片对比工具
 
 [在线预览](https://epiphany-cl.github.io/image-comparison-tool/)
+
 [备用链接](https://image-compare.chenlong716.dpdns.org/)
 
 一款在线图片对比工具，支持同步缩放、平移和多种上传方式。
@@ -18,6 +19,7 @@
 ## 快速开始
 
 ### 环境要求
+
 - Node.js 18.x+
 
 ### 安装启动
@@ -47,6 +49,8 @@ npm start
 ## 项目截图
 
 ![图片对比工具主界面](image.png)
+
+![演示效果](https://file.icve.com.cn/file_doc/125/198/1F63183F121DAAC8F366DC0BE84E25A4.gif)
 
 ## 许可证
 
