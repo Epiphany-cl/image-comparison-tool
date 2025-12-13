@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 // 页面元数据配置
@@ -10,15 +9,26 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: "/icon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/icon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
         url: "/icon.svg",
         type: "image/svg+xml",
       },
     ],
-    // 使用现有的icon.svg作为苹果触摸图标
+    // 苹果触摸图标
     apple: [
       {
-        url: "/icon.svg",
-        type: "image/svg+xml",
+        url: "/icon-180x180.png",
+        sizes: "180x180",
+        type: "image/png",
       },
     ],
   },
