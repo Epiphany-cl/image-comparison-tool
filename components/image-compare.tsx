@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { ZoomIn, ZoomOut, RotateCcw, ImageIcon } from "lucide-react"
+import { useGesture } from "@use-gesture/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -37,8 +38,6 @@ interface ImagePanelProps {
  */
 function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const isDragging = useRef(false)
-  const lastPos = useRef({ x: 0, y: 0 })
 
   /**
    * 处理拖拽放置事件
@@ -71,83 +70,107 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
     [onUpload],
   )
 
-  /**
-   * 处理鼠标滚轮事件实现缩放功能
-   * 根据滚轮方向调整缩放比例，并保持鼠标位置相对固定
-   * @param e 鼠标滚轮事件对象
-   */
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? 0.9 : 1.1
-      const newScale = Math.min(Math.max(viewState.scale * delta, 0.1), 10)
+  useGesture(
+    {
+      // 拖拽处理：实现图片平移
+      onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
+        if (!image) return
+        if (first) {
+          memo = { x: viewState.offsetX, y: viewState.offsetY }
+        }
+        onViewChange({
+          ...viewState,
+          offsetX: memo.x + mx,
+          offsetY: memo.y + my,
+        })
+        return memo
+      },
+      // 捏合缩放处理：实现触摸屏缩放
+      onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
+        if (!image) return
+        event.preventDefault()
 
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (rect) {
-        const mouseX = e.clientX - rect.left - rect.width / 2
-        const mouseY = e.clientY - rect.top - rect.height / 2
+        if (first) {
+          const rect = containerRef.current?.getBoundingClientRect()
+          if (!rect) return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 }
 
-        const scaleDiff = newScale / viewState.scale
-        const newOffsetX = mouseX - (mouseX - viewState.offsetX) * scaleDiff
-        const newOffsetY = mouseY - (mouseY - viewState.offsetY) * scaleDiff
+          const mouseX = ox - rect.left - rect.width / 2
+          const mouseY = oy - rect.top - rect.height / 2
+
+          return {
+            initialScale: viewState.scale,
+            initialOffset: { x: viewState.offsetX, y: viewState.offsetY },
+            mouseX,
+            mouseY,
+          }
+        }
+
+        const { initialScale, initialOffset, mouseX, mouseY } = memo
+        const newScale = Math.min(Math.max(initialScale * ms, 0.1), 10)
+        const scaleDiff = newScale / initialScale
+
+        const newOffsetX = mouseX - (mouseX - initialOffset.x) * scaleDiff
+        const newOffsetY = mouseY - (mouseY - initialOffset.y) * scaleDiff
 
         onViewChange({
           scale: newScale,
           offsetX: newOffsetX,
           offsetY: newOffsetY,
         })
-      }
+
+        return memo
+      },
+      // 滚轮处理：实现鼠标滚轮缩放和触控板平移
+      onWheel: ({ event, delta: [dx, dy] }) => {
+        if (!image) return
+        if (event.ctrlKey) return // Pinch handled by onPinch
+
+        // Prevent browser back navigation on trackpad (horizontal swipe)
+        if (Math.abs(dx) > Math.abs(dy)) {
+          event.preventDefault()
+        }
+
+        // Heuristic: Small deltaY (< 40) is likely Trackpad (Pan), Large is Mouse (Zoom)
+        const isTrackpad = Math.abs(dy) < 40
+
+        if (isTrackpad) {
+          // Pan
+          event.preventDefault()
+          onViewChange({
+            ...viewState,
+            offsetX: viewState.offsetX - dx,
+            offsetY: viewState.offsetY - dy,
+          })
+        } else {
+          // Zoom (Keep existing logic)
+          event.preventDefault()
+          const delta = dy > 0 ? 0.9 : 1.1
+          const newScale = Math.min(Math.max(viewState.scale * delta, 0.1), 10)
+
+          const rect = containerRef.current?.getBoundingClientRect()
+          if (rect) {
+            const mouseX = event.clientX - rect.left - rect.width / 2
+            const mouseY = event.clientY - rect.top - rect.height / 2
+
+            const scaleDiff = newScale / viewState.scale
+            const newOffsetX = mouseX - (mouseX - viewState.offsetX) * scaleDiff
+            const newOffsetY = mouseY - (mouseY - viewState.offsetY) * scaleDiff
+
+            onViewChange({
+              scale: newScale,
+              offsetX: newOffsetX,
+              offsetY: newOffsetY,
+            })
+          }
+        }
+      },
     },
-    [viewState, onViewChange],
-  )
-
-  /**
-   * 处理鼠标按下事件开始拖拽
-   * 记录拖拽起始位置，仅响应左键点击
-   * @param e 鼠标事件对象
-   */
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) { // 仅处理左键
-      isDragging.current = true
-      lastPos.current = { x: e.clientX, y: e.clientY }
-    }
-  }, [])
-
-  /**
-   * 处理鼠标移动事件实现平移功能
-   * 当鼠标拖拽时更新视图偏移量
-   * @param e 鼠标事件对象
-   */
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isDragging.current) {
-        const deltaX = e.clientX - lastPos.current.x
-        const deltaY = e.clientY - lastPos.current.y
-        lastPos.current = { x: e.clientX, y: e.clientY }
-
-        onViewChange({
-          ...viewState,
-          offsetX: viewState.offsetX + deltaX,
-          offsetY: viewState.offsetY + deltaY,
-        })
-      }
+    {
+      target: containerRef,
+      eventOptions: { passive: false },
+      enabled: !!image,
     },
-    [viewState, onViewChange],
   )
-
-  /**
-   * 处理鼠标释放事件结束拖拽
-   */
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false
-  }, [])
-
-  /**
-   * 处理鼠标离开事件结束拖拽
-   */
-  const handleMouseLeave = useCallback(() => {
-    isDragging.current = false
-  }, [])
 
   // 计算实际显示的缩放比例（基础缩放 × 用户缩放）
   const displayScale = image ? viewState.scale * image.baseScale : viewState.scale
@@ -158,14 +181,10 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
       className={cn("h-full relative overflow-hidden", image ? "cursor-grab active:cursor-grabbing" : "")}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
-      onWheel={image ? handleWheel : undefined}
-      onMouseDown={image ? handleMouseDown : undefined}
-      onMouseMove={image ? handleMouseMove : undefined}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
     >
       {image ? (
         <>
+          {/* 图片显示区域 */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{
@@ -180,6 +199,7 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
               draggable={false}
             />
           </div>
+          {/* 图片尺寸信息显示 */}
           <div
             className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl text-xs font-mono
             bg-white/20 dark:bg-white/10 backdrop-blur-xl
@@ -193,6 +213,7 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
 
         </>
       ) : (
+        /* 文件上传区域 */
         <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <ImageIcon className="h-10 w-10 opacity-40" />
@@ -212,21 +233,21 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
  * 提供双图片对比功能，支持同步缩放、平移和各种操作控件
  */
 export function ImageCompare() {
-  // 左右图片的状态
-  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null)
-  const [rightImage, setRightImage] = useState<ImageInfo | null>(null)
+  // 左右图片的状态管理
+  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null)  // 左侧图片信息
+  const [rightImage, setRightImage] = useState<ImageInfo | null>(null)  // 右侧图片信息
 
-  // 视图状态，包括缩放比例和偏移量
+  // 视图状态管理（缩放和平移）
   const [viewState, setViewState] = useState<ViewState>({
-    scale: 1,
-    offsetX: 0,
-    offsetY: 0,
+    scale: 1,      // 缩放比例
+    offsetX: 0,    // X轴偏移
+    offsetY: 0,    // Y轴偏移
   })
 
-  // 容器引用，用于计算图片基础缩放比例
+  // 容器DOM引用
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // 监听系统主题变化，同步更新应用主题
+  // 系统主题监听与同步
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
 
@@ -333,6 +354,7 @@ export function ImageCompare() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
+      {/* 顶部控制栏：缩放控制和操作按钮 */}
       <div
         className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1.5 rounded-2xl
         bg-white/20 dark:bg-white/10 backdrop-blur-xl
@@ -384,6 +406,7 @@ export function ImageCompare() {
         </Button>
       </div>
 
+      {/* 图片对比区域：左右两个图片面板 */}
       <div ref={containerRef} className="flex-1 flex min-h-0 relative">
         <div className="flex-1 bg-secondary">
           <ImagePanel
