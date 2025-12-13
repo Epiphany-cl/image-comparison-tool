@@ -1,8 +1,9 @@
 # 图片对比工具
 
 [在线预览](https://epiphany-cl.github.io/image-comparison-tool/)
+[备用链接](https://image-compare.chenlong716.dpdns.org/)
 
-一款基于 Next.js 和 TypeScript 构建的在线图片对比工具，支持同步缩放、平移和多种上传方式。
+一款在线图片对比工具，支持同步缩放、平移和多种上传方式。
 
 适用于设计师、摄影师等需要精确比较图片细节的用户。
 
@@ -11,17 +12,8 @@
 - 双图并排实时对比
 - 同步缩放和平移操作
 - 支持拖拽上传文件
-- 响应式布局
 - 深色模式支持
-- 简洁直观的界面
-
-## 技术栈
-
-- Next.js - React 框架
-- TypeScript - 类型安全
-- Tailwind CSS - 样式框架
-- shadcn/ui - UI 组件库
-- Lucide React - 图标库
+- 触控板支持（捏合缩放、双指滑动平移）
 
 ## 快速开始
 
@@ -51,26 +43,6 @@ npm start
 ```
 
 静态文件将生成在 `out` 目录
-
-## 项目结构
-
-```
-├── app/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── ui/
-│   │   └── button.tsx
-│   └── image-compare.tsx
-├── lib/
-│   └── utils.ts
-├── public/
-│   └── icon.svg
-├── next.config.js
-├── package.json
-└── tsconfig.json
-```
 
 ## 项目截图
 
