@@ -14,6 +14,13 @@ export const metadata: Metadata = {
         type: "image/svg+xml",
       },
     ],
+    // 使用现有的icon.svg作为苹果触摸图标
+    apple: [
+      {
+        url: "/icon.svg",
+        type: "image/svg+xml",
+      },
+    ],
   },
 }
 
