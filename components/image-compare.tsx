@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X } from "lucide-react"
 import { useGesture } from "@use-gesture/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,7 @@ interface ImageInfo {
 interface ImagePanelProps {
   image: ImageInfo | null      // 图片信息对象
   onUpload: (file: File) => void  // 上传图片的回调函数
+  onDelete: () => void         // 删除图片的回调函数
   viewState: ViewState         // 当前视图状态
   onViewChange: (state: ViewState) => void  // 视图状态改变的回调函数
   label: string                // 面板标签（A/B）
@@ -36,7 +37,7 @@ interface ImagePanelProps {
  * 图片面板块组件
  * 提供图片显示、拖拽上传、缩放和平移功能
  */
-function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePanelProps) {
+function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   /**
@@ -210,6 +211,23 @@ function ImagePanel({ image, onUpload, viewState, onViewChange, label }: ImagePa
           >
             {image.width} × {image.height}
           </div>
+          
+          {/* 删除按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-3 h-7 w-7 rounded-lg 
+            bg-white/20 dark:bg-white/10 backdrop-blur-xl
+            border border-white/30 dark:border-white/20
+            text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white 
+            hover:bg-white/30 dark:hover:bg-white/20
+            shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
+            dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]
+            ${label === "A" ? "left-3" : "right-3"}`}
+            onClick={onDelete}
+          >
+            <X className="h-4 w-4" />
+          </Button>
 
         </>
       ) : (
@@ -412,6 +430,7 @@ export function ImageCompare() {
           <ImagePanel
             image={leftImage}
             onUpload={(file) => handleUpload(file, "left")}
+            onDelete={() => setLeftImage(null)}
             viewState={viewState}
             onViewChange={setViewState}
             label="A"
@@ -422,6 +441,7 @@ export function ImageCompare() {
           <ImagePanel
             image={rightImage}
             onUpload={(file) => handleUpload(file, "right")}
+            onDelete={() => setRightImage(null)}
             viewState={viewState}
             onViewChange={setViewState}
             label="B"

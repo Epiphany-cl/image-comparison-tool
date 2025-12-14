@@ -50,8 +50,6 @@ npm start
 
 ![图片对比工具主界面](image.png)
 
-![演示效果](https://file.icve.com.cn/file_doc/125/198/1F63183F121DAAC8F366DC0BE84E25A4.gif)
-
 ## 许可证
 
 MIT License - 查看 LICENSE 文件了解详情

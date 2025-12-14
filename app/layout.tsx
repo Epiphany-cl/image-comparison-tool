@@ -9,12 +9,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icon-32x32.png",
+        url: "/icon-32.png",
         sizes: "32x32",
         type: "image/png",
       },
       {
-        url: "/icon-16x16.png",
+        url: "/icon-16png",
         sizes: "16x16",
         type: "image/png",
       },
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     // 苹果触摸图标
     apple: [
       {
-        url: "/icon-180x180.png",
+        url: "/icon-180.png",
         sizes: "180x180",
         type: "image/png",
       },
