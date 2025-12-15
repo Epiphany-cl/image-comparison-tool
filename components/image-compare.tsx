@@ -371,7 +371,7 @@ export function ImageCompare() {
   const hasImages = leftImage || rightImage
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background hidden md:flex">
       {/* 顶部控制栏：缩放控制和操作按钮 */}
       <div
         className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1.5 rounded-2xl

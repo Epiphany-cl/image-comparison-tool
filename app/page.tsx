@@ -1,4 +1,5 @@
 import { ImageCompare } from "@/components/image-compare"
+import { MobileNotSupported } from "@/components/mobile-not-supported"
 
 /**
  * 首页组件
@@ -7,6 +8,7 @@ import { ImageCompare } from "@/components/image-compare"
 export default function Home() {
   return (
     <main className="min-h-screen bg-background">
+      <MobileNotSupported />
       <ImageCompare />
     </main>
   )
