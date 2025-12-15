@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import { Monitor } from "lucide-react"
+import { Monitor } from 'lucide-react';
 
 /**
  * 移动设备不支持提示组件
@@ -31,5 +31,5 @@ export function MobileNotSupported() {
         </div>
       </div>
     </div>
-  )
+  );
 }

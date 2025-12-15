@@ -1,5 +1,5 @@
-import { ImageCompare } from "@/components/image-compare"
-import { MobileNotSupported } from "@/components/mobile-not-supported"
+import { ImageCompare } from '@/components/image-compare';
+import { MobileNotSupported } from '@/components/mobile-not-supported';
 
 /**
  * 首页组件
@@ -11,5 +11,5 @@ export default function Home() {
       <MobileNotSupported />
       <ImageCompare />
     </main>
-  )
+  );
 }

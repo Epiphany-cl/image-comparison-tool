@@ -1,12 +1,12 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { useState, useRef, useCallback, useEffect } from "react"
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X } from "lucide-react"
-import { useGesture } from "@use-gesture/react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X } from 'lucide-react';
+import { useGesture } from '@use-gesture/react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 // 视图状态接口，用于管理图片的缩放和平移
 interface ViewState {
@@ -38,7 +38,7 @@ interface ImagePanelProps {
  * 提供图片显示、拖拽上传、缩放和平移功能
  */
 function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label }: ImagePanelProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
 
   /**
    * 处理拖拽放置事件
@@ -47,14 +47,14 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
    */
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault()
-      const file = e.dataTransfer.files[0]
-      if (file && file.type.startsWith("image/")) {
-        onUpload(file)
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        onUpload(file);
       }
     },
-    [onUpload],
-  )
+    [onUpload]
+  );
 
   /**
    * 处理文件输入变化事件
@@ -63,123 +63,123 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
    */
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
+      const file = e.target.files?.[0];
       if (file) {
-        onUpload(file)
+        onUpload(file);
       }
     },
-    [onUpload],
-  )
+    [onUpload]
+  );
 
   useGesture(
     {
       // 拖拽处理：实现图片平移
       onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
-        if (!image) return
+        if (!image) {return;}
         if (first) {
-          memo = { x: viewState.offsetX, y: viewState.offsetY }
+          memo = { x: viewState.offsetX, y: viewState.offsetY };
         }
         onViewChange({
           ...viewState,
           offsetX: memo.x + mx,
-          offsetY: memo.y + my,
-        })
-        return memo
+          offsetY: memo.y + my
+        });
+        return memo;
       },
       // 捏合缩放处理：实现触摸屏缩放
       onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
-        if (!image) return
-        event.preventDefault()
+        if (!image) {return;}
+        event.preventDefault();
 
         if (first) {
-          const rect = containerRef.current?.getBoundingClientRect()
-          if (!rect) return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 }
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (!rect) {return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 };}
 
-          const mouseX = ox - rect.left - rect.width / 2
-          const mouseY = oy - rect.top - rect.height / 2
+          const mouseX = ox - rect.left - rect.width / 2;
+          const mouseY = oy - rect.top - rect.height / 2;
 
           return {
             initialScale: viewState.scale,
             initialOffset: { x: viewState.offsetX, y: viewState.offsetY },
             mouseX,
-            mouseY,
-          }
+            mouseY
+          };
         }
 
-        const { initialScale, initialOffset, mouseX, mouseY } = memo
-        const newScale = Math.min(Math.max(initialScale * ms, 0.1), 10)
-        const scaleDiff = newScale / initialScale
+        const { initialScale, initialOffset, mouseX, mouseY } = memo;
+        const newScale = Math.min(Math.max(initialScale * ms, 0.1), 10);
+        const scaleDiff = newScale / initialScale;
 
-        const newOffsetX = mouseX - (mouseX - initialOffset.x) * scaleDiff
-        const newOffsetY = mouseY - (mouseY - initialOffset.y) * scaleDiff
+        const newOffsetX = mouseX - (mouseX - initialOffset.x) * scaleDiff;
+        const newOffsetY = mouseY - (mouseY - initialOffset.y) * scaleDiff;
 
         onViewChange({
           scale: newScale,
           offsetX: newOffsetX,
-          offsetY: newOffsetY,
-        })
+          offsetY: newOffsetY
+        });
 
-        return memo
+        return memo;
       },
       // 滚轮处理：实现鼠标滚轮缩放和触控板平移
       onWheel: ({ event, delta: [dx, dy] }) => {
-        if (!image) return
-        if (event.ctrlKey) return // Pinch handled by onPinch
+        if (!image) {return;}
+        if (event.ctrlKey) {return;} // Pinch handled by onPinch
 
         // Prevent browser back navigation on trackpad (horizontal swipe)
         if (Math.abs(dx) > Math.abs(dy)) {
-          event.preventDefault()
+          event.preventDefault();
         }
 
         // Heuristic: Small deltaY (< 40) is likely Trackpad (Pan), Large is Mouse (Zoom)
-        const isTrackpad = Math.abs(dy) < 40
+        const isTrackpad = Math.abs(dy) < 40;
 
         if (isTrackpad) {
           // Pan
-          event.preventDefault()
+          event.preventDefault();
           onViewChange({
             ...viewState,
             offsetX: viewState.offsetX - dx,
-            offsetY: viewState.offsetY - dy,
-          })
+            offsetY: viewState.offsetY - dy
+          });
         } else {
           // Zoom (Keep existing logic)
-          event.preventDefault()
-          const delta = dy > 0 ? 0.9 : 1.1
-          const newScale = Math.min(Math.max(viewState.scale * delta, 0.1), 10)
+          event.preventDefault();
+          const delta = dy > 0 ? 0.9 : 1.1;
+          const newScale = Math.min(Math.max(viewState.scale * delta, 0.1), 10);
 
-          const rect = containerRef.current?.getBoundingClientRect()
+          const rect = containerRef.current?.getBoundingClientRect();
           if (rect) {
-            const mouseX = event.clientX - rect.left - rect.width / 2
-            const mouseY = event.clientY - rect.top - rect.height / 2
+            const mouseX = event.clientX - rect.left - rect.width / 2;
+            const mouseY = event.clientY - rect.top - rect.height / 2;
 
-            const scaleDiff = newScale / viewState.scale
-            const newOffsetX = mouseX - (mouseX - viewState.offsetX) * scaleDiff
-            const newOffsetY = mouseY - (mouseY - viewState.offsetY) * scaleDiff
+            const scaleDiff = newScale / viewState.scale;
+            const newOffsetX = mouseX - (mouseX - viewState.offsetX) * scaleDiff;
+            const newOffsetY = mouseY - (mouseY - viewState.offsetY) * scaleDiff;
 
             onViewChange({
               scale: newScale,
               offsetX: newOffsetX,
-              offsetY: newOffsetY,
-            })
+              offsetY: newOffsetY
+            });
           }
         }
-      },
+      }
     },
     {
       target: containerRef,
       eventOptions: { passive: false },
-      enabled: !!image,
-    },
-  )
+      enabled: !!image
+    }
+  );
 
   // 计算实际显示的缩放比例（基础缩放 × 用户缩放）
-  const displayScale = image ? viewState.scale * image.baseScale : viewState.scale
+  const displayScale = image ? viewState.scale * image.baseScale : viewState.scale;
 
   return (
     <div
       ref={containerRef}
-      className={cn("h-full relative overflow-hidden", image ? "cursor-grab active:cursor-grabbing" : "")}
+      className={cn('h-full relative overflow-hidden', image ? 'cursor-grab active:cursor-grabbing' : '')}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
@@ -190,11 +190,11 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
             className="absolute inset-0 flex items-center justify-center"
             style={{
               transform: `translate(${viewState.offsetX}px, ${viewState.offsetY}px) scale(${displayScale})`,
-              transformOrigin: "center center",
+              transformOrigin: 'center center'
             }}
           >
             <img
-              src={image.src || "/placeholder.svg"}
+              src={image.src || '/placeholder.svg'}
               alt={label}
               className="max-w-none select-none pointer-events-none"
               draggable={false}
@@ -211,7 +211,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
           >
             {image.width} × {image.height}
           </div>
-          
+
           {/* 删除按钮 */}
           <Button
             variant="ghost"
@@ -223,7 +223,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
             hover:bg-white/30 dark:hover:bg-white/20
             shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
             dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]
-            ${label === "A" ? "left-3" : "right-3"}`}
+            ${label === 'A' ? 'left-3' : 'right-3'}`}
             onClick={onDelete}
           >
             <X className="h-4 w-4" />
@@ -243,7 +243,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
         </label>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -252,30 +252,30 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
  */
 export function ImageCompare() {
   // 左右图片的状态管理
-  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null)  // 左侧图片信息
-  const [rightImage, setRightImage] = useState<ImageInfo | null>(null)  // 右侧图片信息
+  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);  // 左侧图片信息
+  const [rightImage, setRightImage] = useState<ImageInfo | null>(null);  // 右侧图片信息
 
   // 视图状态管理（缩放和平移）
   const [viewState, setViewState] = useState<ViewState>({
     scale: 1,      // 缩放比例
     offsetX: 0,    // X轴偏移
-    offsetY: 0,    // Y轴偏移
-  })
+    offsetY: 0    // Y轴偏移
+  });
 
   // 容器DOM引用
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 系统主题监听与同步
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handleChange = (e: MediaQueryListEvent) => {
-      document.documentElement.classList.toggle("dark", e.matches)
-    }
+      document.documentElement.classList.toggle('dark', e.matches);
+    };
 
-    mediaQuery.addEventListener("change", handleChange)
-    return () => mediaQuery.removeEventListener("change", handleChange)
-  }, [])
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   /**
    * 计算图片的基础缩放比例
@@ -285,18 +285,18 @@ export function ImageCompare() {
    * @returns 基础缩放比例
    */
   const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
-    const container = containerRef.current
-    if (!container) return 1
+    const container = containerRef.current;
+    if (!container) {return 1;}
 
-    const containerWidth = container.clientWidth / 2 - 32 // 单侧容器宽度，减去边距
-    const containerHeight = container.clientHeight - 32
+    const containerWidth = container.clientWidth / 2 - 32; // 单侧容器宽度，减去边距
+    const containerHeight = container.clientHeight - 32;
 
-    const scaleX = containerWidth / imgWidth
-    const scaleY = containerHeight / imgHeight
+    const scaleX = containerWidth / imgWidth;
+    const scaleY = containerHeight / imgHeight;
 
     // 取较小值确保图片完整显示，并限制最大为 1（不放大小图）
-    return Math.min(scaleX, scaleY, 1)
-  }, [])
+    return Math.min(scaleX, scaleY, 1);
+  }, []);
 
   /**
    * 处理图片上传
@@ -305,38 +305,38 @@ export function ImageCompare() {
    * @param side 图片所在侧（左/右）
    */
   const handleUpload = useCallback(
-    (file: File, side: "left" | "right") => {
-      const reader = new FileReader()
+    (file: File, side: 'left' | 'right') => {
+      const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string
-        const img = new Image()
+        const result = e.target?.result as string;
+        const img = new Image();
         img.onload = () => {
-          const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight)
+          const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
           const imageInfo: ImageInfo = {
             src: result,
             width: img.naturalWidth,
             height: img.naturalHeight,
-            baseScale,
-          }
-          if (side === "left") {
-            setLeftImage(imageInfo)
+            baseScale
+          };
+          if (side === 'left') {
+            setLeftImage(imageInfo);
           } else {
-            setRightImage(imageInfo)
+            setRightImage(imageInfo);
           }
-        }
-        img.src = result
-      }
-      reader.readAsDataURL(file)
+        };
+        img.src = result;
+      };
+      reader.readAsDataURL(file);
     },
-    [calculateBaseScale],
-  )
+    [calculateBaseScale]
+  );
 
   /**
    * 重置视图状态到默认值
    */
   const handleReset = useCallback(() => {
-    setViewState({ scale: 1, offsetX: 0, offsetY: 0 })
-  }, [])
+    setViewState({ scale: 1, offsetX: 0, offsetY: 0 });
+  }, []);
 
   /**
    * 放大视图
@@ -344,9 +344,9 @@ export function ImageCompare() {
   const handleZoomIn = useCallback(() => {
     setViewState((prev) => ({
       ...prev,
-      scale: Math.min(prev.scale * 1.25, 10),
-    }))
-  }, [])
+      scale: Math.min(prev.scale * 1.25, 10)
+    }));
+  }, []);
 
   /**
    * 缩小视图
@@ -354,21 +354,21 @@ export function ImageCompare() {
   const handleZoomOut = useCallback(() => {
     setViewState((prev) => ({
       ...prev,
-      scale: Math.max(prev.scale / 1.25, 0.1),
-    }))
-  }, [])
+      scale: Math.max(prev.scale / 1.25, 0.1)
+    }));
+  }, []);
 
   /**
    * 清空所有图片并重置视图
    */
   const handleClearAll = useCallback(() => {
-    setLeftImage(null)
-    setRightImage(null)
-    handleReset()
-  }, [handleReset])
+    setLeftImage(null);
+    setRightImage(null);
+    handleReset();
+  }, [handleReset]);
 
   // 判断是否有图片已上传
-  const hasImages = leftImage || rightImage
+  const hasImages = leftImage || rightImage;
 
   return (
     <div className="flex flex-col h-screen bg-background hidden md:flex">
@@ -429,7 +429,7 @@ export function ImageCompare() {
         <div className="flex-1 bg-secondary">
           <ImagePanel
             image={leftImage}
-            onUpload={(file) => handleUpload(file, "left")}
+            onUpload={(file) => handleUpload(file, 'left')}
             onDelete={() => setLeftImage(null)}
             viewState={viewState}
             onViewChange={setViewState}
@@ -440,7 +440,7 @@ export function ImageCompare() {
         <div className="flex-1 bg-secondary">
           <ImagePanel
             image={rightImage}
-            onUpload={(file) => handleUpload(file, "right")}
+            onUpload={(file) => handleUpload(file, 'right')}
             onDelete={() => setRightImage(null)}
             viewState={viewState}
             onViewChange={setViewState}
@@ -449,5 +449,5 @@ export function ImageCompare() {
         </div>
       </div>
     </div>
-  )
+  );
 }
