@@ -3,7 +3,7 @@
 import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2 } from 'lucide-react';
 import { useGesture } from '@use-gesture/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -31,13 +31,14 @@ interface ImagePanelProps {
   viewState: ViewState         // 当前视图状态
   onViewChange: (state: ViewState) => void  // 视图状态改变的回调函数
   label: string                // 面板标签（A/B）
+  isLoading: boolean           // 是否正在加载
 }
 
 /**
  * 图片面板块组件
  * 提供图片显示、拖拽上传、缩放和平移功能
  */
-function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label }: ImagePanelProps) {
+function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label, isLoading }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -131,7 +132,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
           event.preventDefault();
         }
 
-        // Heuristic: Small deltaY (< 40) is likely Trackpad (Pan), Large is Mouse (Zoom)
+        // 经验法则：deltaY 较小（< 40）通常是触控板（平移），较大则是鼠标滚轮（缩放）
         const isTrackpad = Math.abs(dy) < 40;
 
         if (isTrackpad) {
@@ -179,11 +180,20 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label 
   return (
     <div
       ref={containerRef}
-      className={cn('h-full relative overflow-hidden', image ? 'cursor-grab active:cursor-grabbing' : '')}
+      className={cn(
+        'h-full relative overflow-hidden',
+        image ? 'cursor-grab active:cursor-grabbing' : '',
+        isLoading && 'cursor-wait'
+      )}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
-      {image ? (
+      {isLoading ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none pointer-events-none">
+          <Loader2 className="h-10 w-10 animate-spin text-neutral-600 dark:text-white/70" />
+          <p className="text-sm text-neutral-600 dark:text-white/70">正在处理图片...</p>
+        </div>
+      ) : image ? (
         <>
           {/* 图片显示区域 */}
           <div
@@ -255,6 +265,10 @@ export function ImageCompare() {
   const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);  // 左侧图片信息
   const [rightImage, setRightImage] = useState<ImageInfo | null>(null);  // 右侧图片信息
 
+  // 加载状态管理
+  const [leftLoading, setLeftLoading] = useState(false);
+  const [rightLoading, setRightLoading] = useState(false);
+
   // 视图状态管理（缩放和平移）
   const [viewState, setViewState] = useState<ViewState>({
     scale: 1,      // 缩放比例
@@ -306,6 +320,13 @@ export function ImageCompare() {
    */
   const handleUpload = useCallback(
     (file: File, side: 'left' | 'right') => {
+      // 设置加载状态
+      if (side === 'left') {
+        setLeftLoading(true);
+      } else {
+        setRightLoading(true);
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
@@ -320,11 +341,31 @@ export function ImageCompare() {
           };
           if (side === 'left') {
             setLeftImage(imageInfo);
+            setLeftLoading(false);
           } else {
             setRightImage(imageInfo);
+            setRightLoading(false);
           }
         };
+        img.onerror = () => {
+          // 图片加载失败，清除加载状态
+          if (side === 'left') {
+            setLeftLoading(false);
+          } else {
+            setRightLoading(false);
+          }
+          alert('图片加载失败，请检查文件格式');
+        };
         img.src = result;
+      };
+      reader.onerror = () => {
+        // 文件读取失败
+        if (side === 'left') {
+          setLeftLoading(false);
+        } else {
+          setRightLoading(false);
+        }
+        alert('文件读取失败');
       };
       reader.readAsDataURL(file);
     },
@@ -364,11 +405,15 @@ export function ImageCompare() {
   const handleClearAll = useCallback(() => {
     setLeftImage(null);
     setRightImage(null);
+    setLeftLoading(false);
+    setRightLoading(false);
     handleReset();
   }, [handleReset]);
 
   // 判断是否有图片已上传
   const hasImages = leftImage || rightImage;
+  // 判断是否正在加载
+  const isLoading = leftLoading || rightLoading;
 
   return (
     <div className="flex flex-col h-screen bg-background hidden md:flex">
@@ -380,7 +425,10 @@ export function ImageCompare() {
         shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
         dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]"
       >
-        <span className="text-sm font-medium text-neutral-800 dark:text-white px-2">图片对比</span>
+        <span className="text-sm font-medium text-neutral-800 dark:text-white px-2">
+          {isLoading && <Loader2 className="h-3 w-3 inline animate-spin mr-1.5" />}
+          图片对比
+        </span>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         <span className="text-xs text-neutral-600 dark:text-white/70 px-2 font-mono">
           {Math.round(viewState.scale * 100)}%
@@ -390,7 +438,7 @@ export function ImageCompare() {
           size="icon"
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleZoomOut}
-          disabled={!hasImages}
+          disabled={!hasImages || isLoading}
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
@@ -399,7 +447,7 @@ export function ImageCompare() {
           size="icon"
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleZoomIn}
-          disabled={!hasImages}
+          disabled={!hasImages || isLoading}
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -408,7 +456,7 @@ export function ImageCompare() {
           size="icon"
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleReset}
-          disabled={!hasImages}
+          disabled={!hasImages || isLoading}
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
@@ -418,7 +466,7 @@ export function ImageCompare() {
           size="sm"
           className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleClearAll}
-          disabled={!hasImages}
+          disabled={!hasImages || isLoading}
         >
           清空
         </Button>
@@ -434,6 +482,7 @@ export function ImageCompare() {
             viewState={viewState}
             onViewChange={setViewState}
             label="A"
+            isLoading={leftLoading}
           />
         </div>
         <div className="w-px bg-white/20 dark:bg-white/10 backdrop-blur-sm" />
@@ -445,6 +494,7 @@ export function ImageCompare() {
             viewState={viewState}
             onViewChange={setViewState}
             label="B"
+            isLoading={rightLoading}
           />
         </div>
       </div>
