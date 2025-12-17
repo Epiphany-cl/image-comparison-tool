@@ -200,7 +200,8 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
             className="absolute inset-0 flex items-center justify-center"
             style={{
               transform: `translate(${viewState.offsetX}px, ${viewState.offsetY}px) scale(${displayScale})`,
-              transformOrigin: 'center center'
+              transformOrigin: 'center center',
+              willChange: 'transform' // 优化性能
             }}
           >
             <img
@@ -226,10 +227,10 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           <Button
             variant="ghost"
             size="icon"
-            className={`absolute top-3 h-7 w-7 rounded-lg 
+            className={`absolute top-3 h-7 w-7 rounded-lg
             bg-white/20 dark:bg-white/10 backdrop-blur-xl
             border border-white/30 dark:border-white/20
-            text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white 
+            text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white
             hover:bg-white/30 dark:hover:bg-white/20
             shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
             dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]
@@ -279,6 +280,22 @@ export function ImageCompare() {
   // 容器DOM引用
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 存储 ObjectURL，用于组件卸载时清理
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+
+  // 使用 ref 跟踪最新的 image 状态，避免闭包问题
+  const leftImageRef = useRef<ImageInfo | null>(null);
+  const rightImageRef = useRef<ImageInfo | null>(null);
+
+  // 同步 ref 和 state
+  useEffect(() => {
+    leftImageRef.current = leftImage;
+  }, [leftImage]);
+
+  useEffect(() => {
+    rightImageRef.current = rightImage;
+  }, [rightImage]);
+
   // 系统主题监听与同步
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -314,7 +331,7 @@ export function ImageCompare() {
 
   /**
    * 处理图片上传
-   * 读取图片文件并设置图片信息状态
+   * 使用 URL.createObjectURL 替代 dataURL 以显著减少内存占用
    * @param file 上传的图片文件
    * @param side 图片所在侧（左/右）
    */
@@ -327,47 +344,53 @@ export function ImageCompare() {
         setRightLoading(true);
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
-          const imageInfo: ImageInfo = {
-            src: result,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-            baseScale
-          };
-          if (side === 'left') {
-            setLeftImage(imageInfo);
-            setLeftLoading(false);
-          } else {
-            setRightImage(imageInfo);
-            setRightLoading(false);
-          }
+      // 在设置新图片前清理旧的 URL（如果存在）- 使用 ref 避免闭包问题
+      const oldUrl = side === 'left' ? leftImageRef.current?.src : rightImageRef.current?.src;
+      if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
+        URL.revokeObjectURL(oldUrl);
+        objectUrlsRef.current.delete(oldUrl);
+      }
+
+      // 直接使用 ObjectURL，无需 FileReader
+      // 这样只需要存储一次 URL，避免大文件的 base64 转换
+      const objectUrl = URL.createObjectURL(file);
+
+      const img = new Image();
+      img.onload = () => {
+        const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
+
+        // 记录 URL 以待清理
+        objectUrlsRef.current.add(objectUrl);
+
+        const imageInfo: ImageInfo = {
+          src: objectUrl,
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          baseScale
         };
-        img.onerror = () => {
-          // 图片加载失败，清除加载状态
-          if (side === 'left') {
-            setLeftLoading(false);
-          } else {
-            setRightLoading(false);
-          }
-          alert('图片加载失败，请检查文件格式');
-        };
-        img.src = result;
+
+        if (side === 'left') {
+          setLeftImage(imageInfo);
+          setLeftLoading(false);
+        } else {
+          setRightImage(imageInfo);
+          setRightLoading(false);
+        }
       };
-      reader.onerror = () => {
-        // 文件读取失败
+
+      img.onerror = () => {
+        // 图片加载失败，清理 ObjectURL
+        URL.revokeObjectURL(objectUrl);
         if (side === 'left') {
           setLeftLoading(false);
         } else {
           setRightLoading(false);
         }
-        alert('文件读取失败');
+        alert('图片加载失败，请检查文件格式');
       };
-      reader.readAsDataURL(file);
+
+      // 设置 src 触发加载（ObjectURL 可以直接在 Image 对象中使用）
+      img.src = objectUrl;
     },
     [calculateBaseScale]
   );
@@ -399,21 +422,60 @@ export function ImageCompare() {
     }));
   }, []);
 
+  // 判断是否有图片已上传
+  const hasImages = leftImage || rightImage;
+  // 判断是否正在加载
+  const isLoading = leftLoading || rightLoading;
+
+  /**
+   * 清理所有 ObjectURL - 用于组件卸载或清空操作
+   */
+  const cleanupAllUrls = useCallback(() => {
+    objectUrlsRef.current.forEach((url) => {
+      URL.revokeObjectURL(url);
+    });
+    objectUrlsRef.current.clear();
+  }, []);
+
+  // 组件卸载时清理所有 URL，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      cleanupAllUrls();
+    };
+  }, [cleanupAllUrls]);
+
+  /**
+   * 删除单张图片并清理对应的 ObjectURL
+   */
+  const handleDeleteImage = useCallback((side: 'left' | 'right') => {
+    // 清理该侧的 URL - 使用 ref 最新状态
+    const imageRef = side === 'left' ? leftImageRef : rightImageRef;
+    const oldUrl = imageRef.current?.src;
+    if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
+      URL.revokeObjectURL(oldUrl);
+      objectUrlsRef.current.delete(oldUrl);
+    }
+
+    // 更新状态
+    if (side === 'left') {
+      setLeftImage(null);
+    } else {
+      setRightImage(null);
+    }
+  }, []);
+
   /**
    * 清空所有图片并重置视图
+   * 同时清理所有 ObjectURL 防止内存泄漏
    */
   const handleClearAll = useCallback(() => {
+    cleanupAllUrls();
     setLeftImage(null);
     setRightImage(null);
     setLeftLoading(false);
     setRightLoading(false);
     handleReset();
-  }, [handleReset]);
-
-  // 判断是否有图片已上传
-  const hasImages = leftImage || rightImage;
-  // 判断是否正在加载
-  const isLoading = leftLoading || rightLoading;
+  }, [cleanupAllUrls, handleReset]);
 
   return (
     <div className="flex flex-col h-screen bg-background hidden md:flex">
@@ -478,7 +540,7 @@ export function ImageCompare() {
           <ImagePanel
             image={leftImage}
             onUpload={(file) => handleUpload(file, 'left')}
-            onDelete={() => setLeftImage(null)}
+            onDelete={() => handleDeleteImage('left')}
             viewState={viewState}
             onViewChange={setViewState}
             label="A"
@@ -490,7 +552,7 @@ export function ImageCompare() {
           <ImagePanel
             image={rightImage}
             onUpload={(file) => handleUpload(file, 'right')}
-            onDelete={() => setRightImage(null)}
+            onDelete={() => handleDeleteImage('right')}
             viewState={viewState}
             onViewChange={setViewState}
             label="B"
