@@ -1,26 +1,25 @@
 # 图片对比工具
 
-[在线预览](https://epiphany-cl.github.io/image-comparison-tool/)
+[在线预览](https://epiphany-cl.github.io/image-comparison-tool/) | [备用链接](https://image-compare.chenlong716.dpdns.org/)
 
-[备用链接](https://image-compare.chenlong716.dpdns.org/)
-
-一款在线图片对比工具，支持同步缩放、平移和多种上传方式。
+一款极简的在线图片对比工具，专为桌面端优化，支持同步缩放/平移对比图片。
 
 适用于设计师、摄影师等需要精确比较图片细节的用户。
 
 ## 功能特性
 
-- 双图并排实时对比
-- 同步缩放和平移操作
-- 支持拖拽上传文件
-- 深色模式支持
-- 触控板支持（捏合缩放、双指滑动平移）
+- **双图并排实时对比**：左右面板同步操作
+- **同步缩放和平移**：拖拽、滚轮、触控板手势全支持
+- **多种上传方式**：拖拽上传、点击选择
+- **深色模式支持**：自动跟随系统
+- **双语国际化**：简体中文 / English
 
 ## 快速开始
 
 ### 环境要求
 
 - Node.js 18.x+
+- npm 9.x+
 
 ### 安装启动
 
@@ -37,10 +36,10 @@ npm run dev
 ### 构建部署
 
 ```bash
-# 构建生产版本
+# 构建生产版本（静态导出到 out/）
 npm run build
 
-# 运行生产版本
+# 预览生产构建
 npm start
 ```
 
