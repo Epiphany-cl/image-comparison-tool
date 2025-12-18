@@ -3,49 +3,57 @@
 import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+// icon图标
 import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2 } from 'lucide-react';
+// 手势库
 import { useGesture } from '@use-gesture/react';
+// UI组件
 import { Button } from '@/components/ui/button';
+// 样式工具
 import { cn } from '@/lib/utils';
 
-// 视图状态接口，用于管理图片的缩放和平移
+// 视图状态接口，定义了缩放和平移的参数
 interface ViewState {
-  scale: number      // 缩放比例
-  offsetX: number    // X轴偏移量
-  offsetY: number    // Y轴偏移量
+  scale: number; // 缩放比例
+  offsetX: number; // X轴偏移量
+  offsetY: number; // Y轴偏移量
 }
 
-// 图片信息接口，存储图片的基本信息
+// 图片信息接口
 interface ImageInfo {
-  src: string        // 图片数据URL
-  width: number      // 图片原始宽度
-  height: number     // 图片原始高度
-  baseScale: number  // 基础缩放比例（使图片适应容器）
+  src: string; // 图片的URL
+  width: number; // 图片原始宽度
+  height: number; // 图片原始高度
+  baseScale: number; // 图片加载后的初始缩放比例，用于适配容器
 }
 
-// 图片面板属性接口
+// 单个图片面板的属性接口
 interface ImagePanelProps {
-  image: ImageInfo | null      // 图片信息对象
-  onUpload: (file: File) => void  // 上传图片的回调函数
-  onDelete: () => void         // 删除图片的回调函数
-  viewState: ViewState         // 当前视图状态
-  onViewChange: (state: ViewState) => void  // 视图状态改变的回调函数
-  label: string                // 面板标签（A/B）
-  isLoading: boolean           // 是否正在加载
+  image: ImageInfo | null; // 图片信息
+  onUpload: (file: File) => void; // 上传回调
+  onDelete: () => void; // 删除回调
+  viewState: ViewState; // 视图状态
+  onViewChange: (state: ViewState) => void; // 视图状态变更回调
+  label: string; // 面板标签 (A/B)
+  isLoading: boolean; // 是否正在加载
 }
 
 /**
- * 图片面板块组件
- * 提供图片显示、拖拽上传、缩放和平移功能
+ * 单个图片显示面板
+ * 负责处理单张图片的拖拽上传、手势交互（平移、缩放）和显示
+ * @param image
+ * @param onUpload
+ * @param onDelete
+ * @param viewState
+ * @param onViewChange
+ * @param label
+ * @param isLoading
+ * @constructor
  */
 function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label, isLoading }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * 处理拖拽放置事件
-   * 当用户将文件拖拽到面板上时触发，验证文件类型并调用上传回调
-   * @param e 拖拽事件对象
-   */
+  // 处理文件拖拽上传
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -57,11 +65,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
     [onUpload]
   );
 
-  /**
-   * 处理文件输入变化事件
-   * 当用户通过文件选择对话框选择文件时触发
-   * @param e 文件输入变化事件对象
-   */
+  // 处理通过文件输入框选择的图片
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -72,14 +76,17 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
     [onUpload]
   );
 
+  // 使用 @use-gesture/react 库来处理拖拽、捏合缩放和滚轮事件
   useGesture(
     {
-      // 拖拽处理：实现图片平移
+      // 拖拽事件：用于平移图片
       onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
         if (!image) {return;}
+        // 在拖拽开始时记录初始偏移量
         if (first) {
           memo = { x: viewState.offsetX, y: viewState.offsetY };
         }
+        // 更新视图状态，实现平移
         onViewChange({
           ...viewState,
           offsetX: memo.x + mx,
@@ -87,11 +94,12 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
         });
         return memo;
       },
-      // 捏合缩放处理：实现触摸屏缩放
+      // 捏合事件：用于双指缩放
       onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
         if (!image) {return;}
-        event.preventDefault();
+        event.preventDefault(); // 阻止浏览器默认的捏合行为
 
+        // 在捏合开始时，计算鼠标相对于容器的位置和初始缩放信息
         if (first) {
           const rect = containerRef.current?.getBoundingClientRect();
           if (!rect) {return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 };}
@@ -107,10 +115,12 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           };
         }
 
+        // 根据捏合手势的移动距离计算新的缩放比例，并限制在0.1到10倍之间
         const { initialScale, initialOffset, mouseX, mouseY } = memo;
         const newScale = Math.min(Math.max(initialScale * ms, 0.1), 10);
         const scaleDiff = newScale / initialScale;
 
+        // 以鼠标位置为中心进行缩放，调整偏移量
         const newOffsetX = mouseX - (mouseX - initialOffset.x) * scaleDiff;
         const newOffsetY = mouseY - (mouseY - initialOffset.y) * scaleDiff;
 
@@ -122,21 +132,23 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
 
         return memo;
       },
-      // 滚轮处理：实现鼠标滚轮缩放和触控板平移
+      // 滚轮事件：用于鼠标滚轮缩放或触控板平移
       onWheel: ({ event, delta: [dx, dy] }) => {
         if (!image) {return;}
-        if (event.ctrlKey) {return;} // Pinch handled by onPinch
+        // 按住Ctrl键时，不处理滚轮事件（通常用于浏览器缩放）
+        if (event.ctrlKey) {return;}
 
-        // Prevent browser back navigation on trackpad (horizontal swipe)
+        // 如果是水平滚动，则阻止默认行为（如页面左右滚动）
         if (Math.abs(dx) > Math.abs(dy)) {
           event.preventDefault();
         }
 
-        // 经验法则：deltaY 较小（< 40）通常是触控板（平移），较大则是鼠标滚轮（缩放）
+        // 判断是触控板滚动还是鼠标滚轮
+        // 触控板的deltaY值通常较小
         const isTrackpad = Math.abs(dy) < 40;
 
         if (isTrackpad) {
-          // Pan
+          // 触控板滚动用于平移
           event.preventDefault();
           onViewChange({
             ...viewState,
@@ -144,11 +156,12 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
             offsetY: viewState.offsetY - dy
           });
         } else {
-          // Zoom (Keep existing logic)
+          // 鼠标滚轮用于缩放
           event.preventDefault();
-          const delta = dy > 0 ? 0.9 : 1.1;
+          const delta = dy > 0 ? 0.9 : 1.1; // 根据滚动方向确定缩放因子
           const newScale = Math.min(Math.max(viewState.scale * delta, 0.1), 10);
 
+          // 以鼠标指针位置为中心进行缩放
           const rect = containerRef.current?.getBoundingClientRect();
           if (rect) {
             const mouseX = event.clientX - rect.left - rect.width / 2;
@@ -168,13 +181,13 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       }
     },
     {
-      target: containerRef,
-      eventOptions: { passive: false },
-      enabled: !!image
+      target: containerRef, // 将手势绑定到容器元素
+      eventOptions: { passive: false }, // passive: false 是为了能调用 e.preventDefault()
+      enabled: !!image // 仅在有图片时启用手势
     }
   );
 
-  // 计算实际显示的缩放比例（基础缩放 × 用户缩放）
+  // 计算最终应用到图片上的总缩放比例
   const displayScale = image ? viewState.scale * image.baseScale : viewState.scale;
 
   return (
@@ -182,36 +195,37 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       ref={containerRef}
       className={cn(
         'h-full relative overflow-hidden',
-        image ? 'cursor-grab active:cursor-grabbing' : '',
-        isLoading && 'cursor-wait'
+        image ? 'cursor-grab active:cursor-grabbing' : '', // 根据是否有图片设置鼠标样式
+        isLoading && 'cursor-wait' // 加载中设置等待鼠标样式
       )}
       onDrop={handleDrop}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => e.preventDefault()} // 必须阻止默认行为才能触发onDrop
     >
       {isLoading ? (
+        // 加载中状态
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none pointer-events-none">
           <Loader2 className="h-10 w-10 animate-spin text-neutral-600 dark:text-white/70" />
           <p className="text-sm text-neutral-600 dark:text-white/70">正在处理图片...</p>
         </div>
       ) : image ? (
+        // 已加载图片状态
         <>
-          {/* 图片显示区域 */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{
               transform: `translate(${viewState.offsetX}px, ${viewState.offsetY}px) scale(${displayScale})`,
               transformOrigin: 'center center',
-              willChange: 'transform' // 优化性能
+              willChange: 'transform' // 优化动画性能
             }}
           >
             <img
               src={image.src || '/placeholder.svg'}
               alt={label}
-              className="max-w-none select-none pointer-events-none"
+              className="max-w-none select-none pointer-events-none" // 防止图片被选中或拖拽
               draggable={false}
             />
           </div>
-          {/* 图片尺寸信息显示 */}
+          {/* 显示图片尺寸信息 */}
           <div
             className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl text-xs font-mono
             bg-white/20 dark:bg-white/10 backdrop-blur-xl
@@ -222,8 +236,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           >
             {image.width} × {image.height}
           </div>
-
-          {/* 删除按钮 */}
+          {/* 删除图片按钮 */}
           <Button
             variant="ghost"
             size="icon"
@@ -239,10 +252,9 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           >
             <X className="h-4 w-4" />
           </Button>
-
         </>
       ) : (
-        /* 文件上传区域 */
+        // 空状态，等待上传
         <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <ImageIcon className="h-10 w-10 opacity-40" />
@@ -258,36 +270,33 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
 }
 
 /**
- * 图片对比主组件
- * 提供双图片对比功能，支持同步缩放、平移和各种操作控件
+ * 核心组件：图片比较器
+ * 管理左右两个图片面板的状态，以及共享的视图状态（缩放、平移）和控制栏
+ * @constructor
  */
 export function ImageCompare() {
-  // 左右图片的状态管理
-  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);  // 左侧图片信息
-  const [rightImage, setRightImage] = useState<ImageInfo | null>(null);  // 右侧图片信息
+  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);
+  const [rightImage, setRightImage] = useState<ImageInfo | null>(null);
 
-  // 加载状态管理
   const [leftLoading, setLeftLoading] = useState(false);
   const [rightLoading, setRightLoading] = useState(false);
 
-  // 视图状态管理（缩放和平移）
+  // 共享的视图状态，会被传递给左右两个ImagePanel
   const [viewState, setViewState] = useState<ViewState>({
-    scale: 1,      // 缩放比例
-    offsetX: 0,    // X轴偏移
-    offsetY: 0    // Y轴偏移
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0
   });
 
-  // 容器DOM引用
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 存储 ObjectURL，用于组件卸载时清理
+  // 使用 ref 存储由 URL.createObjectURL 创建的 URL，以便在组件卸载时进行清理
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
-  // 使用 ref 跟踪最新的 image 状态，避免闭包问题
+  // 使用 ref 来存储最新的图片信息，解决 useCallback 闭包问题
   const leftImageRef = useRef<ImageInfo | null>(null);
   const rightImageRef = useRef<ImageInfo | null>(null);
 
-  // 同步 ref 和 state
   useEffect(() => {
     leftImageRef.current = leftImage;
   }, [leftImage]);
@@ -296,7 +305,7 @@ export function ImageCompare() {
     rightImageRef.current = rightImage;
   }, [rightImage]);
 
-  // 系统主题监听与同步
+  // 监听系统颜色方案变化，并切换亮/暗主题
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -308,33 +317,23 @@ export function ImageCompare() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  /**
-   * 计算图片的基础缩放比例
-   * 确保图片能够完整显示在容器内，且不会被不必要地放大
-   * @param imgWidth 图片原始宽度
-   * @param imgHeight 图片原始高度
-   * @returns 基础缩放比例
-   */
+  // 计算图片的初始缩放比例，使其能完整地显示在容器内
   const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
     const container = containerRef.current;
     if (!container) {return 1;}
 
-    const containerWidth = container.clientWidth / 2 - 32; // 单侧容器宽度，减去边距
+    // 容器的可用宽高（减去一些内边距）
+    const containerWidth = container.clientWidth / 2 - 32;
     const containerHeight = container.clientHeight - 32;
 
     const scaleX = containerWidth / imgWidth;
     const scaleY = containerHeight / imgHeight;
 
-    // 取较小值确保图片完整显示，并限制最大为 1（不放大小图）
+    // 取较小的缩放比例，并确保不超过1（即图片不进行放大）
     return Math.min(scaleX, scaleY, 1);
   }, []);
 
-  /**
-   * 处理图片上传
-   * 使用 URL.createObjectURL 替代 dataURL 以显著减少内存占用
-   * @param file 上传的图片文件
-   * @param side 图片所在侧（左/右）
-   */
+  // 处理图片上传的核心逻辑
   const handleUpload = useCallback(
     (file: File, side: 'left' | 'right') => {
       // 设置加载状态
@@ -344,22 +343,20 @@ export function ImageCompare() {
         setRightLoading(true);
       }
 
-      // 在设置新图片前清理旧的 URL（如果存在）- 使用 ref 避免闭包问题
+      // 释放旧的 Object URL，防止内存泄漏
       const oldUrl = side === 'left' ? leftImageRef.current?.src : rightImageRef.current?.src;
       if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
         URL.revokeObjectURL(oldUrl);
         objectUrlsRef.current.delete(oldUrl);
       }
 
-      // 直接使用 ObjectURL，无需 FileReader
-      // 这样只需要存储一次 URL，避免大文件的 base64 转换
       const objectUrl = URL.createObjectURL(file);
 
       const img = new Image();
       img.onload = () => {
+        // 图片加载成功后，计算初始缩放比例并更新状态
         const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
 
-        // 记录 URL 以待清理
         objectUrlsRef.current.add(objectUrl);
 
         const imageInfo: ImageInfo = {
@@ -379,7 +376,7 @@ export function ImageCompare() {
       };
 
       img.onerror = () => {
-        // 图片加载失败，清理 ObjectURL
+        // 图片加载失败处理
         URL.revokeObjectURL(objectUrl);
         if (side === 'left') {
           setLeftLoading(false);
@@ -389,47 +386,36 @@ export function ImageCompare() {
         alert('图片加载失败，请检查文件格式');
       };
 
-      // 设置 src 触发加载（ObjectURL 可以直接在 Image 对象中使用）
       img.src = objectUrl;
     },
     [calculateBaseScale]
   );
 
-  /**
-   * 重置视图状态到默认值
-   */
+  // 重置视图状态
   const handleReset = useCallback(() => {
     setViewState({ scale: 1, offsetX: 0, offsetY: 0 });
   }, []);
 
-  /**
-   * 放大视图
-   */
+  // 放大
   const handleZoomIn = useCallback(() => {
     setViewState((prev) => ({
       ...prev,
-      scale: Math.min(prev.scale * 1.25, 10)
+      scale: Math.min(prev.scale * 1.25, 10) // 限制最大10倍
     }));
   }, []);
 
-  /**
-   * 缩小视图
-   */
+  // 缩小
   const handleZoomOut = useCallback(() => {
     setViewState((prev) => ({
       ...prev,
-      scale: Math.max(prev.scale / 1.25, 0.1)
+      scale: Math.max(prev.scale / 1.25, 0.1) // 限制最小0.1倍
     }));
   }, []);
 
-  // 判断是否有图片已上传
   const hasImages = leftImage || rightImage;
-  // 判断是否正在加载
   const isLoading = leftLoading || rightLoading;
 
-  /**
-   * 清理所有 ObjectURL - 用于组件卸载或清空操作
-   */
+  // 统一清理所有 Object URL 的函数
   const cleanupAllUrls = useCallback(() => {
     objectUrlsRef.current.forEach((url) => {
       URL.revokeObjectURL(url);
@@ -437,37 +423,34 @@ export function ImageCompare() {
     objectUrlsRef.current.clear();
   }, []);
 
-  // 组件卸载时清理所有 URL，防止内存泄漏
+  // 在组件卸载时调用清理函数
   useEffect(() => {
     return () => {
       cleanupAllUrls();
     };
   }, [cleanupAllUrls]);
 
-  /**
-   * 删除单张图片并清理对应的 ObjectURL
-   */
-  const handleDeleteImage = useCallback((side: 'left' | 'right') => {
-    // 清理该侧的 URL - 使用 ref 最新状态
-    const imageRef = side === 'left' ? leftImageRef : rightImageRef;
-    const oldUrl = imageRef.current?.src;
-    if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
-      URL.revokeObjectURL(oldUrl);
-      objectUrlsRef.current.delete(oldUrl);
-    }
+  // 删除单侧图片
+  const handleDeleteImage = useCallback(
+    (side: 'left' | 'right') => {
+      const imageRef = side === 'left' ? leftImageRef : rightImageRef;
+      const oldUrl = imageRef.current?.src;
+      // 释放 Object URL
+      if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
+        URL.revokeObjectURL(oldUrl);
+        objectUrlsRef.current.delete(oldUrl);
+      }
 
-    // 更新状态
-    if (side === 'left') {
-      setLeftImage(null);
-    } else {
-      setRightImage(null);
-    }
-  }, []);
+      if (side === 'left') {
+        setLeftImage(null);
+      } else {
+        setRightImage(null);
+      }
+    },
+    []
+  );
 
-  /**
-   * 清空所有图片并重置视图
-   * 同时清理所有 ObjectURL 防止内存泄漏
-   */
+  // 清空所有图片和状态
   const handleClearAll = useCallback(() => {
     cleanupAllUrls();
     setLeftImage(null);
@@ -478,8 +461,9 @@ export function ImageCompare() {
   }, [cleanupAllUrls, handleReset]);
 
   return (
+    // 'hidden md:flex' 在移动端隐藏此组件，仅在桌面端显示
     <div className="flex flex-col h-screen bg-background hidden md:flex">
-      {/* 顶部控制栏：缩放控制和操作按钮 */}
+      {/* 顶部中央控制栏 */}
       <div
         className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1.5 rounded-2xl
         bg-white/20 dark:bg-white/10 backdrop-blur-xl
@@ -534,9 +518,10 @@ export function ImageCompare() {
         </Button>
       </div>
 
-      {/* 图片对比区域：左右两个图片面板 */}
+      {/* 图片面板容器 */}
       <div ref={containerRef} className="flex-1 flex min-h-0 relative">
         <div className="flex-1 bg-secondary">
+          {/* 左侧图片面板 */}
           <ImagePanel
             image={leftImage}
             onUpload={(file) => handleUpload(file, 'left')}
@@ -549,6 +534,7 @@ export function ImageCompare() {
         </div>
         <div className="w-px bg-white/20 dark:bg-white/10 backdrop-blur-sm" />
         <div className="flex-1 bg-secondary">
+          {/* 右侧图片面板 */}
           <ImagePanel
             image={rightImage}
             onUpload={(file) => handleUpload(file, 'right')}

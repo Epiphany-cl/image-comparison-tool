@@ -3,11 +3,12 @@
 import { Monitor } from 'lucide-react';
 
 /**
- * 移动设备不支持提示组件
- * 当用户在移动设备上访问时显示
+ * 在移动设备上显示的“暂不支持”组件
+ * @constructor
  */
 export function MobileNotSupported() {
   return (
+    // 'md:hidden' 确保此组件仅在小于 md (medium) 的屏幕上可见
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 md:hidden">
       <div
         className="relative z-10 flex flex-col items-center gap-6 max-w-sm text-center p-8 rounded-2xl
