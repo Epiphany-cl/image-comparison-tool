@@ -4,8 +4,38 @@ import './globals.css';
 
 // 定义应用的元数据，用于SEO和浏览器标签显示
 export const metadata: Metadata = {
-  title: '图片对比工具',
-  description: '一款支持同步缩放和平移的图片对比工具',
+  title: {
+    default: '图片对比工具 - 在线同步缩放和平移对比',
+    template: '%s - 图片对比工具'
+  },
+  description: '一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。适用于设计师、摄影师等需要精确比较图片细节的用户。',
+  keywords: ['图片对比', '图片比较', '同步缩放', '平移对比', '在线图片对比', '设计师工具', '摄影师工具'],
+  authors: [{ name: 'Chen Long' }],
+  creator: 'Chen Long',
+  publisher: 'Chen Long',
+  openGraph: {
+    type: 'website',
+    locale: 'zh_CN',
+    url: 'https://epiphany-cl.github.io/image-comparison-tool/',
+    title: '图片对比工具 - 在线同步缩放和平移对比',
+    description: '一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。',
+    siteName: '图片对比工具'
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1
+    }
+  },
+  metadataBase: new URL('https://epiphany-cl.github.io/image-comparison-tool/'),
+  alternates: {
+    canonical: '/'
+  },
   icons: {
     icon: [
       {
@@ -54,6 +84,28 @@ export default function RootLayout({
                 document.documentElement.classList.toggle('dark', prefersDark);
               })();
             `
+          }}
+        />
+        {/* 结构化数据 - WebApplication */}
+        <script
+          type='application/ld+json'
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebApplication',
+              'name': '图片对比工具',
+              'description': '一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。',
+              'applicationCategory': 'DesignApplication',
+              'operatingSystem': 'All',
+              'url': 'https://epiphany-cl.github.io/image-comparison-tool/',
+              'featureList': [
+                '双图并排实时对比',
+                '同步缩放和平移操作',
+                '支持拖拽上传文件',
+                '深色模式支持',
+                '触控板支持（捏合缩放、双指滑动平移）'
+              ]
+            })
           }}
         />
       </head>
