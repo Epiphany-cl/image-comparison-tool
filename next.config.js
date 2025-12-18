@@ -9,6 +9,8 @@ const nextConfig = {
   },
   // 启用 React 严格模式
   reactStrictMode: true,
+  // 设置 basePath，用于 GitHub Pages 部署
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
 };
 
 module.exports = nextConfig;

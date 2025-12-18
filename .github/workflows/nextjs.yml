@@ -74,7 +74,7 @@ jobs:
       - name: 安装依赖
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
       - name: 使用 Next.js 构建
-        run: ${{ steps.detect-package-manager.outputs.runner }} next build
+        run: NEXT_PUBLIC_BASE_PATH="/image-comparison-tool" ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: 上传构建产物
         uses: actions/upload-pages-artifact@v3
         with:

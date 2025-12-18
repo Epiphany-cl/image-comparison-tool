@@ -40,23 +40,23 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon-32.png',
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/icon-32.png`,
         sizes: '32x32',
         type: 'image/png'
       },
       {
-        url: '/icon-16.png',
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/icon-16.png`,
         sizes: '16x16',
         type: 'image/png'
       },
       {
-        url: '/icon.svg',
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/icon.svg`,
         type: 'image/svg+xml'
       }
     ],
     apple: [
       {
-        url: '/icon-180.png',
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/icon-180.png`,
         sizes: '180x180',
         type: 'image/png'
       }
