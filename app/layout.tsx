@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { Metadata } from 'next';
+import { I18nProvider } from '@/components/i18n-provider';
 import './globals.css';
 
 // 定义应用的元数据，用于SEO和浏览器标签显示
@@ -115,7 +116,9 @@ export default function RootLayout({
         'antialiased' 开启抗锯齿以获得更平滑的文本渲染
       */}
       <body className={'font-sans antialiased'}>
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

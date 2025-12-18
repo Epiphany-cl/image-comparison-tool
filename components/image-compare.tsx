@@ -4,13 +4,16 @@ import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 // icon图标
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages } from 'lucide-react';
 // 手势库
 import { useGesture } from '@use-gesture/react';
 // UI组件
 import { Button } from '@/components/ui/button';
 // 样式工具
 import { cn } from '@/lib/utils';
+// i18n
+import { useI18n } from '@/lib/i18n';
+import type { Translations } from '@/lib/locales';
 
 // 视图状态接口，定义了缩放和平移的参数
 interface ViewState {
@@ -36,6 +39,7 @@ interface ImagePanelProps {
   onViewChange: (state: ViewState) => void; // 视图状态变更回调
   label: string; // 面板标签 (A/B)
   isLoading: boolean; // 是否正在加载
+  t: Translations; // 翻译对象
 }
 
 /**
@@ -50,7 +54,7 @@ interface ImagePanelProps {
  * @param isLoading
  * @constructor
  */
-function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label, isLoading }: ImagePanelProps) {
+function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label, isLoading, t }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 处理文件拖拽上传
@@ -81,7 +85,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
     {
       // 拖拽事件：用于平移图片
       onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
-        if (!image) {return;}
+        if (!image) { return; }
         // 在拖拽开始时记录初始偏移量
         if (first) {
           memo = { x: viewState.offsetX, y: viewState.offsetY };
@@ -96,13 +100,13 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       },
       // 捏合事件：用于双指缩放
       onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
-        if (!image) {return;}
+        if (!image) { return; }
         event.preventDefault(); // 阻止浏览器默认的捏合行为
 
         // 在捏合开始时，计算鼠标相对于容器的位置和初始缩放信息
         if (first) {
           const rect = containerRef.current?.getBoundingClientRect();
-          if (!rect) {return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 };}
+          if (!rect) { return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 }; }
 
           const mouseX = ox - rect.left - rect.width / 2;
           const mouseY = oy - rect.top - rect.height / 2;
@@ -134,9 +138,9 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       },
       // 滚轮事件：用于鼠标滚轮缩放或触控板平移
       onWheel: ({ event, delta: [dx, dy] }) => {
-        if (!image) {return;}
+        if (!image) { return; }
         // 按住Ctrl键时，不处理滚轮事件（通常用于浏览器缩放）
-        if (event.ctrlKey) {return;}
+        if (event.ctrlKey) { return; }
 
         // 如果是水平滚动，则阻止默认行为（如页面左右滚动）
         if (Math.abs(dx) > Math.abs(dy)) {
@@ -205,7 +209,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
         // 加载中状态
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none pointer-events-none">
           <Loader2 className="h-10 w-10 animate-spin text-neutral-600 dark:text-white/70" />
-          <p className="text-sm text-neutral-600 dark:text-white/70">正在处理图片...</p>
+          <p className="text-sm text-neutral-600 dark:text-white/70">{t.processing}</p>
         </div>
       ) : image ? (
         // 已加载图片状态
@@ -259,7 +263,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <ImageIcon className="h-10 w-10 opacity-40" />
             <div className="text-center">
-              <p className="text-sm">拖放或点击上传</p>
+              <p className="text-sm">{t.dropOrClick}</p>
             </div>
           </div>
           <input type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
@@ -275,6 +279,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
  * @constructor
  */
 export function ImageCompare() {
+  const { t, locale, setLocale } = useI18n();
   const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);
   const [rightImage, setRightImage] = useState<ImageInfo | null>(null);
 
@@ -320,7 +325,7 @@ export function ImageCompare() {
   // 计算图片的初始缩放比例，使其能完整地显示在容器内
   const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
     const container = containerRef.current;
-    if (!container) {return 1;}
+    if (!container) { return 1; }
 
     // 容器的可用宽高（减去一些内边距）
     const containerWidth = container.clientWidth / 2 - 32;
@@ -383,7 +388,7 @@ export function ImageCompare() {
         } else {
           setRightLoading(false);
         }
-        alert('图片加载失败，请检查文件格式');
+        alert(t.loadError);
       };
 
       img.src = objectUrl;
@@ -473,7 +478,7 @@ export function ImageCompare() {
       >
         <span className="text-sm font-medium text-neutral-800 dark:text-white px-2">
           {isLoading && <Loader2 className="h-3 w-3 inline animate-spin mr-1.5" />}
-          图片对比
+          {t.imageCompare}
         </span>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         <span className="text-xs text-neutral-600 dark:text-white/70 px-2 font-mono">
@@ -514,7 +519,17 @@ export function ImageCompare() {
           onClick={handleClearAll}
           disabled={!hasImages || isLoading}
         >
-          清空
+          {t.clear}
+        </Button>
+        <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 flex items-center gap-1"
+          onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+        >
+          <Languages className="h-3.5 w-3.5" />
+          {t.switchTo}
         </Button>
       </div>
 
@@ -530,6 +545,7 @@ export function ImageCompare() {
             onViewChange={setViewState}
             label="A"
             isLoading={leftLoading}
+            t={t}
           />
         </div>
         <div className="w-px bg-white/20 dark:bg-white/10 backdrop-blur-sm" />
@@ -543,6 +559,7 @@ export function ImageCompare() {
             onViewChange={setViewState}
             label="B"
             isLoading={rightLoading}
+            t={t}
           />
         </div>
       </div>
