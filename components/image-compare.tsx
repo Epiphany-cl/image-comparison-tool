@@ -223,7 +223,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
             }}
           >
             <img
-              src={image.src || '/placeholder.svg'}
+              src={image.src}
               alt={label}
               className="max-w-none select-none pointer-events-none" // 防止图片被选中或拖拽
               draggable={false}
