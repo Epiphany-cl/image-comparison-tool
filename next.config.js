@@ -1,3 +1,15 @@
+const withPWA = require('@ducanh2912/next-pwa').default({
+  dest: 'public',
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swMinify: true,
+  disable: process.env.NODE_ENV === 'development',
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 'export' 选项会使 Next.js 构建一个纯静态的 HTML/CSS/JS 应用。
@@ -13,4 +25,4 @@ const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
 };
 
-module.exports = nextConfig;
+module.exports = withPWA(nextConfig);

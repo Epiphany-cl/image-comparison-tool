@@ -61,6 +61,15 @@ export const metadata: Metadata = {
         type: 'image/png'
       }
     ]
+  },
+  manifest: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/manifest.json`,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '图片对比工具'
+  },
+  formatDetection: {
+    telephone: false
   }
 };
 
