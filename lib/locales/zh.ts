@@ -11,6 +11,9 @@ export interface Translations {
     };
     language: string;
     switchTo: string;
+    pasteSuccess: string;
+    pasteError: string;
+    pasteErrorNoImage: string;
 }
 
 // 中文翻译
@@ -32,5 +35,10 @@ export const zh: Translations = {
 
     // 语言切换
     language: '中文',
-    switchTo: 'EN'
+    switchTo: 'EN',
+
+    // 粘贴功能
+    pasteSuccess: '图片已粘贴到 {side}',
+    pasteError: '粘贴失败，请确保已复制图片',
+    pasteErrorNoImage: '剪贴板中未检测到图片'
 };

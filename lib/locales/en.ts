@@ -19,5 +19,10 @@ export const en: Translations = {
 
     // Language switch
     language: 'English',
-    switchTo: '中'
+    switchTo: '中',
+
+    // Paste functionality
+    pasteSuccess: 'Image pasted to {side}',
+    pasteError: 'Paste failed, please ensure you have copied an image',
+    pasteErrorNoImage: 'No image detected in clipboard'
 };

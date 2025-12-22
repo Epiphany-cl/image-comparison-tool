@@ -4,7 +4,7 @@ import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 // icon图标
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle } from 'lucide-react';
 // 手势库
 import { useGesture } from '@use-gesture/react';
 // UI组件
@@ -286,6 +286,9 @@ export function ImageCompare() {
   const [leftLoading, setLeftLoading] = useState(false);
   const [rightLoading, setRightLoading] = useState(false);
 
+  // Toast 消息状态
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
   // 共享的视图状态，会被传递给左右两个ImagePanel
   const [viewState, setViewState] = useState<ViewState>({
     scale: 1,
@@ -465,6 +468,83 @@ export function ImageCompare() {
     handleReset();
   }, [cleanupAllUrls, handleReset]);
 
+  // 显示 Toast 消息
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000); // 3秒后自动消失
+  }, []);
+
+  // 处理粘贴事件
+  const handlePaste = useCallback(
+    async(e: ClipboardEvent) => {
+      // 阻止默认粘贴行为，避免在输入框中粘贴文本
+      // 但只在有图片时才阻止，允许文本粘贴
+      const items = e.clipboardData?.items;
+      if (!items) {return;}
+
+      // 检查剪贴板中是否有图片
+      let hasImage = false;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          hasImage = true;
+          break;
+        }
+      }
+
+      if (!hasImage) {
+        // 没有图片，不阻止默认行为，也不显示错误
+        return;
+      }
+
+      // 阻止默认行为，避免在页面中粘贴图片
+      e.preventDefault();
+
+      // 获取图片文件
+      const imageItem = Array.from(items).find((item) => item.type.startsWith('image/'));
+      if (!imageItem) {
+        showToast(t.pasteErrorNoImage, 'error');
+        return;
+      }
+
+      const file = imageItem.getAsFile();
+      if (!file) {
+        showToast(t.pasteError, 'error');
+        return;
+      }
+
+      // 智能选择插入位置
+      let targetSide: 'left' | 'right';
+      if (!leftImage) {
+        targetSide = 'left';
+      } else if (!rightImage) {
+        targetSide = 'right';
+      } else {
+        // 两个面板都有图片，优先替换左侧（或者可以根据当前焦点判断）
+        targetSide = 'left';
+      }
+
+      // 执行上传
+      try {
+        await handleUpload(file, targetSide);
+        const sideName = targetSide === 'left' ? 'A' : 'B';
+        showToast(t.pasteSuccess.replace('{side}', sideName), 'success');
+      } catch {
+        showToast(t.pasteError, 'error');
+      }
+    },
+    [handleUpload, leftImage, rightImage, showToast, t]
+  );
+
+  // 监听粘贴事件
+  useEffect(() => {
+    // 只在桌面端启用粘贴功能
+    const isDesktop = window.innerWidth >= 768;
+    if (!isDesktop) {return;}
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
+
   return (
     // 'hidden md:flex' 在移动端隐藏此组件，仅在桌面端显示
     <div className="flex flex-col h-screen bg-background hidden md:flex">
@@ -563,6 +643,29 @@ export function ImageCompare() {
           />
         </div>
       </div>
+
+      {/* Toast 消息提示 */}
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2">
+          <div
+            className={cn(
+              'px-4 py-3 rounded-xl shadow-lg backdrop-blur-xl border',
+              'flex items-center gap-2 min-w-[280px] justify-center',
+              'bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/20',
+              toast.type === 'success'
+                ? 'text-green-700 dark:text-green-300'
+                : 'text-red-700 dark:text-red-300'
+            )}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
