@@ -76,6 +76,8 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       if (file) {
         onUpload(file);
       }
+      // 清空 input，允许重复选择同一文件
+      e.target.value = '';
     },
     [onUpload]
   );
@@ -202,6 +204,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
         image ? 'cursor-grab active:cursor-grabbing' : '', // 根据是否有图片设置鼠标样式
         isLoading && 'cursor-wait' // 加载中设置等待鼠标样式
       )}
+      style={{ touchAction: 'none' }}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()} // 必须阻止默认行为才能触发onDrop
     >
@@ -360,43 +363,48 @@ export function ImageCompare() {
 
       const objectUrl = URL.createObjectURL(file);
 
-      const img = new Image();
-      img.onload = () => {
-        // 图片加载成功后，计算初始缩放比例并更新状态
-        const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          // 图片加载成功后，计算初始缩放比例并更新状态
+          const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
 
-        objectUrlsRef.current.add(objectUrl);
+          objectUrlsRef.current.add(objectUrl);
 
-        const imageInfo: ImageInfo = {
-          src: objectUrl,
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          baseScale
+          const imageInfo: ImageInfo = {
+            src: objectUrl,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            baseScale
+          };
+
+          if (side === 'left') {
+            setLeftImage(imageInfo);
+            setLeftLoading(false);
+          } else {
+            setRightImage(imageInfo);
+            setRightLoading(false);
+          }
+          resolve(imageInfo);
         };
 
-        if (side === 'left') {
-          setLeftImage(imageInfo);
-          setLeftLoading(false);
-        } else {
-          setRightImage(imageInfo);
-          setRightLoading(false);
-        }
-      };
+        img.onerror = () => {
+          // 图片加载失败处理 - 立即释放 URL
+          URL.revokeObjectURL(objectUrl);
+          if (side === 'left') {
+            setLeftLoading(false);
+          } else {
+            setRightLoading(false);
+          }
+          setToast({ message: t.loadError, type: 'error' });
+          setTimeout(() => setToast(null), 3000);
+          reject(new Error('Image load failed'));
+        };
 
-      img.onerror = () => {
-        // 图片加载失败处理
-        URL.revokeObjectURL(objectUrl);
-        if (side === 'left') {
-          setLeftLoading(false);
-        } else {
-          setRightLoading(false);
-        }
-        alert(t.loadError);
-      };
-
-      img.src = objectUrl;
+        img.src = objectUrl;
+      });
     },
-    [calculateBaseScale]
+    [calculateBaseScale, t]
   );
 
   // 重置视图状态
