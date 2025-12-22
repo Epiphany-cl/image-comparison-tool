@@ -3,9 +3,7 @@
     "short_name": "图片对比",
     "description": "一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。",
     "start_url": "./",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#000000",
+    "display": "fullscreen",
     "icons": [
         {
             "src": "icon-16.png",

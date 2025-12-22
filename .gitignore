@@ -7,6 +7,9 @@ pnpm-lock.yaml
 .next
 out
 build
+workbox-*.js
+sw.js
+swe-worker-*.js
 
 # 类型构建产物
 tsconfig.tsbuildinfo

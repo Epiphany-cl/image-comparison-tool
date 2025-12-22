@@ -10,6 +10,9 @@ module.exports = [
       '**/*.config.js',       // 各类 *.config.js 配置文件
       '**/eslint.config.js',  // 自身配置文件
       '**/postcss.config.mjs',// PostCSS 配置文件
+      "**/public/sw.js",      // Service Worker 文件
+      "**/public/swe-worker-*.js", // SW 缓存 Worker 文件
+      "**/public/workbox-*.js",    // Workbox 库文件
     ],
   },
   {
