@@ -564,10 +564,16 @@ export function ImageCompare() {
         shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
         dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]"
       >
-        <span className="text-sm font-medium text-neutral-800 dark:text-white px-2">
-          {isLoading && <Loader2 className="h-3 w-3 inline animate-spin mr-1.5" />}
-          {t.imageCompare}
-        </span>
+        <div className="flex items-center min-w-[120px] justify-center px-2">
+          <div className="relative flex items-center justify-center">
+            {isLoading && (
+              <Loader2 className="h-3 w-3 animate-spin absolute -left-5" />
+            )}
+            <span className="text-sm font-medium text-neutral-800 dark:text-white">
+              {t.imageCompare}
+            </span>
+          </div>
+        </div>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         <span className="text-xs text-neutral-600 dark:text-white/70 px-2 font-mono">
           {Math.round(viewState.scale * 100)}%
