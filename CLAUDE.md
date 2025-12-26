@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
 
 ## 项目概述
 
@@ -52,7 +52,7 @@ calculateBaseScale(imgWidth, imgHeight) {
 displayScale = viewState.scale * image.baseScale
 
 // 缩放限制
-0.1x - 10x  // Math.min(Math.max(value, 0.1), 10)
+0.1x - 10x  // Math.min(Math.max(value, 0.1), 10) (共3处)
 ```
 
 ### 手势智能识别
@@ -82,16 +82,19 @@ transformOrigin: 'center center'
 
 | 文件 | 行数 | 作用 | 修改频率 |
 |------|------|------|----------|
-| `components/image-compare.tsx` | 570 | **所有逻辑**：手势、状态、UI、i18n | 高 |
-| `app/globals.css` | 150 | OKLCH 主题变量、字体栈 | 低 |
-| `app/layout.tsx` | 65 | 深色模式初始化脚本 | 极低 |
-| `components/ui/button.tsx` | 75 | cva 按钮组件 | 极低 |
-| `components/mobile-not-supported.tsx` | 45 | 移动端检测提示 | 极低 |
-| `components/i18n-provider.tsx` | 46 | i18n 状态管理 Provider | 极低 |
+| `components/image-compare.tsx` | 686 | **所有逻辑**：手势、状态、UI、i18n | 高 |
+| `app/globals.css` | 126 | OKLCH 主题变量、字体栈 | 低 |
+| `app/layout.tsx` | 135 | 深色模式初始化脚本、元数据 | 极低 |
+| `components/ui/button.tsx` | 73 | cva 按钮组件 | 极低 |
+| `components/mobile-not-supported.tsx` | 40 | 移动端检测提示 | 极低 |
+| `components/i18n-provider.tsx` | 47 | i18n 状态管理 Provider | 极低 |
 | `lib/i18n.ts` | 50 | i18n 核心逻辑 (Context, Hook) | 极低 |
-| `lib/locales.ts` | 20+ | 翻译定义对象 | 低 |
+| `lib/locales/zh.ts` | 45 | 中文翻译定义 | 低 |
+| `lib/locales/en.ts` | 29 | 英文翻译定义 | 低 |
 | `lib/utils.ts` | 12 | cn() 类名合并 | 极低 |
-| `app/page.tsx` | 15 | 渲染器 | 极低 |
+| `app/page.tsx` | 19 | 渲染器 | 极低 |
+| `next.config.js` | 28 | 静态导出、PWA 配置 | 极低 |
+| `eslint.config.js` | 89 | ESLint 规则配置 | 极低 |
 
 ## i18n 国际化系统
 
@@ -114,37 +117,40 @@ lib/i18n.ts              # 核心逻辑 (Context, Hook, 类型)
 ├── translations         # 翻译映射 { zh, en }
 └── getInitialLocale()   # 检测初始语言
 
-lib/locales.ts           # 翻译定义
-├── zh                   # 中文翻译对象
-└── en                   # 英文翻译对象
+lib/locales/             # 翻译定义
+├── zh.ts                # 中文翻译对象
+└── en.ts                # 英文翻译对象
 
 components/i18n-provider.tsx  # Provider 组件
 └── 管理语言状态和上下文注入
 ```
 
 ### 修改翻译
-在 `lib/locales.ts` 中同步更新两个语言对象：
+在 `lib/locales/zh.ts` 和 `lib/locales/en.ts` 中同步更新：
 
 ```typescript
-export const zh = {
+// zh.ts
+export const zh: Translations = {
   imageCompare: '图片对比',
   clear: '清空',
   // ...
-} as const;
+};
 
-export const en = {
+// en.ts
+export const en: Translations = {
   imageCompare: 'Image Compare',
   clear: 'Clear',
   // ...
-} as const;
+};
 ```
 
 **注意**：修改后需要重启开发服务器以应用类型变化。
 
 ### 添加新翻译键
-1. 在 `lib/locales.ts` 的 `zh` 和 `en` 对象中添加新键
-2. 在代码中使用 `t.yourKey` 访问
-3. 无需额外配置 Context 会自动传播
+1. 在 `lib/locales/zh.ts` 和 `lib/locales/en.ts` 的 `Translations` 接口中添加新键
+2. 在两个翻译对象中添加对应翻译
+3. 在代码中使用 `t.yourKey` 访问
+4. Context 会自动传播，无需额外配置
 
 ## 常用命令
 
@@ -189,9 +195,9 @@ export const en = {
 
 ## 移动端处理
 
-- **检测**：`components/mobile-not-supported.tsx` 使用 `navigator.userAgent`
+- **检测**：`components/mobile-not-supported.tsx` 使用 `window.innerWidth >= 768`
 - **隐藏**：主组件使用 `hidden md:flex`，媒体查询级隐藏
-- **显示**：移动设备看到全屏提示 "仅支持桌面端"
+- **显示**：移动设备看到全屏提示 "暂不支持移动设备"
 
 ## 依赖说明
 
@@ -201,6 +207,7 @@ export const en = {
 - `lucide-react@0.454.0` - 图标库
 - `@radix-ui/react-slot@1.1.1` - UI 组件插槽
 - `class-variance-authority@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.3.1` - 样式工具
+- `@ducanh2912/next-pwa@10.2.9` - PWA 支持
 
 ### 开发工具 (11个)
 - `typescript@^5`, `eslint@^9.39.2` - 类型和代码检查
@@ -275,3 +282,4 @@ echo "your-domain.com" > public/CNAME
 - 缩放限制：0.1x - 10x
 - 触控板阈值：|deltaY| < 40
 - 默认缩放：baseScale ≤ 1
+- 移动端断点：768px
