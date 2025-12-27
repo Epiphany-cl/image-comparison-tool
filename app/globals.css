@@ -123,3 +123,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 防止 i18n 闪烁：如果当前语言与 HTML 默认语言不一致，在 JS 处理完成前隐藏 body */
+.i18n-preparing body {
+  opacity: 0;
+}

@@ -13,14 +13,18 @@ interface I18nProviderProps {
  * 管理语言状态并提供给所有子组件
  */
 export function I18nProvider({ children }: I18nProviderProps) {
-    // 使用中文作为初始值，避免hydration mismatch
+    // 初始状态仍设为 'zh' 以配合静态 HTML，但在 useEffect 中根据实际情况切换
     const [locale, setLocaleState] = useState<Locale>('zh');
     const [mounted, setMounted] = useState(false);
 
-    // 客户端挂载后，检测实际语言
+    // 客户端挂载后，检测实际语言并清理准备状态
     useEffect(() => {
-        setLocaleState(getInitialLocale());
+        const initialLocale = getInitialLocale();
+        setLocaleState(initialLocale);
         setMounted(true);
+
+        // 移除防闪烁类名，使页面可见
+        document.documentElement.classList.remove('i18n-preparing');
     }, []);
 
     // 更新语言并持久化
@@ -31,7 +35,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
         document.documentElement.lang = newLocale === 'zh' ? 'zh-CN' : 'en';
     }, []);
 
-    // 初始化html lang
+    // 后续语言切换时更新 html lang
     useEffect(() => {
         if (mounted) {
             document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';

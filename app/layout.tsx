@@ -90,8 +90,23 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
+                // 主题检测
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 document.documentElement.classList.toggle('dark', prefersDark);
+
+                // 语言检测
+                const savedLocale = localStorage.getItem('locale');
+                const browserLang = navigator.language.toLowerCase();
+                const defaultLocale = 'zh'; // HTML 静态默认语言
+                const locale = savedLocale || (browserLang.startsWith('zh') ? 'zh' : 'en');
+                
+                // 设置 HTML lang 属性
+                document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
+                
+                // 如果检测到的语言不是 HTML 默认语言，则添加准备中类名以隐藏 body
+                if (locale !== defaultLocale) {
+                  document.documentElement.classList.add('i18n-preparing');
+                }
               })();
             `
           }}
