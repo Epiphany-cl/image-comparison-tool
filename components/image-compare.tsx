@@ -4,7 +4,7 @@ import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 // icon图标
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle, Lock, Unlock } from 'lucide-react';
 // 手势库
 import { useGesture } from '@use-gesture/react';
 // UI组件
@@ -297,12 +297,59 @@ export function ImageCompare() {
   // 使用说明模态框状态
   const [showHelp, setShowHelp] = useState(false);
 
-  // 共享的视图状态，会被传递给左右两个ImagePanel
-  const [viewState, setViewState] = useState<ViewState>({
+  // 是否锁定同步
+  const [isSynced, setIsSynced] = useState(true);
+
+  // 左右两侧独立的视图状态
+  const [leftViewState, setLeftViewState] = useState<ViewState>({
     scale: 1,
     offsetX: 0,
     offsetY: 0
   });
+
+  const [rightViewState, setRightViewState] = useState<ViewState>({
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0
+  });
+
+  // 统一的视图变更处理函数
+  const handleViewChange = useCallback((side: 'left' | 'right', newState: ViewState) => {
+    // 总是更新触发侧的状态
+    if (side === 'left') {
+      const oldState = leftViewState;
+      setLeftViewState(newState);
+
+      // 如果同步开启，则计算变化量并应用到右侧
+      if (isSynced) {
+        const scaleRatio = newState.scale / oldState.scale;
+        const dx = newState.offsetX - oldState.offsetX;
+        const dy = newState.offsetY - oldState.offsetY;
+
+        setRightViewState(prev => ({
+          scale: prev.scale * scaleRatio,
+          offsetX: prev.offsetX + dx,
+          offsetY: prev.offsetY + dy
+        }));
+      }
+    } else {
+      const oldState = rightViewState;
+      setRightViewState(newState);
+
+      // 如果同步开启，则计算变化量并应用到左侧
+      if (isSynced) {
+        const scaleRatio = newState.scale / oldState.scale;
+        const dx = newState.offsetX - oldState.offsetX;
+        const dy = newState.offsetY - oldState.offsetY;
+
+        setLeftViewState(prev => ({
+          scale: prev.scale * scaleRatio,
+          offsetX: prev.offsetX + dx,
+          offsetY: prev.offsetY + dy
+        }));
+      }
+    }
+  }, [isSynced, leftViewState, rightViewState]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -415,23 +462,34 @@ export function ImageCompare() {
 
   // 重置视图状态
   const handleReset = useCallback(() => {
-    setViewState({ scale: 1, offsetX: 0, offsetY: 0 });
+    const initialState = { scale: 1, offsetX: 0, offsetY: 0 };
+    setLeftViewState(initialState);
+    setRightViewState(initialState);
+    setIsSynced(true); // 重置时默认开启同步
   }, []);
 
   // 放大
   const handleZoomIn = useCallback(() => {
-    setViewState((prev) => ({
+    // 统一以左侧状态为基准进行按钮缩放（如果锁定），或者只缩放有图的一侧？
+    // 简单起见，按钮缩放时强制应用到两侧（模拟同步操作）
+    const newStateFn = (prev: ViewState) => ({
       ...prev,
-      scale: Math.min(prev.scale * 1.25, 10) // 限制最大10倍
-    }));
+      scale: Math.min(prev.scale * 1.25, 10)
+    });
+
+    setLeftViewState(newStateFn);
+    setRightViewState(newStateFn);
   }, []);
 
   // 缩小
   const handleZoomOut = useCallback(() => {
-    setViewState((prev) => ({
+    const newStateFn = (prev: ViewState) => ({
       ...prev,
-      scale: Math.max(prev.scale / 1.25, 0.1) // 限制最小0.1倍
-    }));
+      scale: Math.max(prev.scale / 1.25, 0.1)
+    });
+
+    setLeftViewState(newStateFn);
+    setRightViewState(newStateFn);
   }, []);
 
   const hasImages = leftImage || rightImage;
@@ -592,7 +650,8 @@ export function ImageCompare() {
         </div>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         <span className="text-xs text-neutral-600 dark:text-white/70 px-2 font-mono">
-          {Math.round(viewState.scale * 100)}%
+          {/* 显示左侧图片的缩放比例作为参考 */}
+          {Math.round(leftViewState.scale * 100)}%
         </span>
         <Button
           variant="ghost"
@@ -621,6 +680,25 @@ export function ImageCompare() {
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
+
+        {/* 新增：锁定/解锁同步按钮 */}
+        <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-7 w-7 rounded-lg transition-colors",
+            isSynced 
+              ? "text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20" 
+              : "text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+          )}
+          onClick={() => setIsSynced(!isSynced)}
+          disabled={!hasImages || isLoading}
+          title={isSynced ? t.unlockView : t.lockView}
+        >
+          {isSynced ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+        </Button>
+
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         <Button
           variant="ghost"
@@ -661,8 +739,8 @@ export function ImageCompare() {
             image={leftImage}
             onUpload={(file) => handleUpload(file, 'left')}
             onDelete={() => handleDeleteImage('left')}
-            viewState={viewState}
-            onViewChange={setViewState}
+            viewState={leftViewState} // 使用左侧独立状态
+            onViewChange={(newState) => handleViewChange('left', newState)} // 传递侧边标识
             label="A"
             isLoading={leftLoading}
             t={t}
@@ -675,8 +753,8 @@ export function ImageCompare() {
             image={rightImage}
             onUpload={(file) => handleUpload(file, 'right')}
             onDelete={() => handleDeleteImage('right')}
-            viewState={viewState}
-            onViewChange={setViewState}
+            viewState={rightViewState} // 使用右侧独立状态
+            onViewChange={(newState) => handleViewChange('right', newState)} // 传递侧边标识
             label="B"
             isLoading={rightLoading}
             t={t}

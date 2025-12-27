@@ -5,6 +5,8 @@ export const en: Translations = {
     // Control bar
     imageCompare: 'Image Compare',
     clear: 'Clear',
+    lockView: 'Lock View (Sync Move)',
+    unlockView: 'Unlock View (Allow Independent Move)',
 
     // Image panel
     processing: 'Processing image...',
@@ -44,13 +46,14 @@ export const en: Translations = {
     scrollToZoomDesc: 'Use mouse wheel to zoom, centered on cursor position',
     trackpadPan: 'Trackpad Pan',
     trackpadPanDesc: 'Use trackpad two-finger swipe to pan the image',
+    alignImagesDesc: 'Click the unlock button in the top bar to move each image independently for alignment',
     faq: 'FAQ',
     faq1Question: 'How to upload images?',
     faq1Answer: 'You can drag and drop images to the dashed areas, or click to select files. Also supports Ctrl+V to paste copied images.',
     faq2Question: 'What is the zoom range?',
     faq2Answer: 'Supports zoom from 0.1x to 10x. You can adjust using +/- buttons, mouse wheel, or pinch gestures.',
     faq3Question: 'Why do images move together?',
-    faq3Answer: 'This is by design. Both images sync their position, making it easy to compare the exact same area.',
+    faq3Answer: 'By default, images move together. You can click the unlock icon in the top bar to move each image independently for alignment.',
     faq4Question: 'How is my data handled?',
     faq4Answer: 'All images are processed locally in your browser and never uploaded to any server. Data is automatically cleared when you close the browser.',
     dontShowAgain: 'Don\'t show again',

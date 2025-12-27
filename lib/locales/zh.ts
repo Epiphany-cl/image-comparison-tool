@@ -2,6 +2,8 @@
 export interface Translations {
     imageCompare: string;
     clear: string;
+    lockView: string;
+    unlockView: string;
     processing: string;
     dropOrClick: string;
     loadError: string;
@@ -32,6 +34,7 @@ export interface Translations {
     scrollToZoomDesc: string;
     trackpadPan: string;
     trackpadPanDesc: string;
+    alignImagesDesc: string;
     faq: string;
     faq1Question: string;
     faq1Answer: string;
@@ -51,6 +54,8 @@ export const zh: Translations = {
     // 控制栏
     imageCompare: '图片对比',
     clear: '清空',
+    lockView: '锁定视图（同步移动）',
+    unlockView: '解锁视图（独立移动）',
 
     // 图片面板
     processing: '正在处理图片...',
@@ -90,13 +95,14 @@ export const zh: Translations = {
     scrollToZoomDesc: '滚动鼠标滚轮可缩放图片，以光标为中心点',
     trackpadPan: '触控板平移',
     trackpadPanDesc: '使用触控板双指滑动可平移图片',
+    alignImagesDesc: '点击顶部解锁按钮，可独立移动单侧图片进行位置对齐',
     faq: '常见问题',
     faq1Question: '如何上传图片？',
     faq1Answer: '您可以直接拖放图片到左右两侧的虚线区域，或点击区域选择文件。还支持 Ctrl+V 粘贴已复制的图片。',
     faq2Question: '缩放范围是多少？',
     faq2Answer: '支持 0.1x 到 10x 的缩放范围。您可以通过顶部控制栏的 +/− 按钮，鼠标滚轮，或双指捏合来调整。',
     faq3Question: '为什么两张图片会同步移动？',
-    faq3Answer: '这是设计特性。无论您如何操作一侧图片，另一侧都会同步变化，方便精确对比两个图像的相同位置。',
+    faq3Answer: '默认情况下两张图片会同步移动。您可以点击顶部的解锁图标来独立移动每张图片，以便对齐位置。',
     faq4Question: '图片数据如何处理？',
     faq4Answer: '所有图片都只在浏览器本地处理，不会上传到服务器。关闭浏览器后数据会自动清理，保障您的隐私安全。',
     dontShowAgain: '不再显示',

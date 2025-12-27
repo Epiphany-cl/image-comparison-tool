@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, HelpCircle, Upload, MousePointer, Hand, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, HelpCircle, Upload, MousePointer, Hand, RotateCcw, CheckCircle, AlertCircle, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -125,6 +125,16 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <div>
                   <h3 className="font-semibold text-sm mb-0.5">{t.trackpadPan}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">{t.trackpadPanDesc}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 border border-amber-500/10">
+                <div className="flex-shrink-0 w-6 h-6 rounded bg-amber-500/20 flex items-center justify-center">
+                  <Unlock className="w-3.5 h-3.5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm mb-0.5">{t.unlockView}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{t.alignImagesDesc}</p>
                 </div>
               </div>
             </div>
