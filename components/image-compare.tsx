@@ -4,11 +4,13 @@ import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 // icon图标
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 // 手势库
 import { useGesture } from '@use-gesture/react';
 // UI组件
 import { Button } from '@/components/ui/button';
+// 使用说明组件
+import { HelpModal } from '@/components/help-modal';
 // 样式工具
 import { cn } from '@/lib/utils';
 // i18n
@@ -292,6 +294,9 @@ export function ImageCompare() {
   // Toast 消息状态
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // 使用说明模态框状态
+  const [showHelp, setShowHelp] = useState(false);
+
   // 共享的视图状态，会被传递给左右两个ImagePanel
   const [viewState, setViewState] = useState<ViewState>({
     scale: 1,
@@ -327,6 +332,7 @@ export function ImageCompare() {
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
+
 
   // 计算图片的初始缩放比例，使其能完整地显示在容器内
   const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
@@ -482,6 +488,16 @@ export function ImageCompare() {
     setTimeout(() => setToast(null), 3000); // 3秒后自动消失
   }, []);
 
+  // 打开使用说明
+  const handleOpenHelp = useCallback(() => {
+    setShowHelp(true);
+  }, []);
+
+  // 关闭使用说明
+  const handleCloseHelp = useCallback(() => {
+    setShowHelp(false);
+  }, []);
+
   // 处理粘贴事件
   const handlePaste = useCallback(
     async(e: ClipboardEvent) => {
@@ -625,6 +641,16 @@ export function ImageCompare() {
           <Languages className="h-3.5 w-3.5" />
           {t.switchTo}
         </Button>
+        <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 flex items-center gap-1"
+          onClick={handleOpenHelp}
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          {t.help}
+        </Button>
       </div>
 
       {/* 图片面板容器 */}
@@ -680,6 +706,12 @@ export function ImageCompare() {
           </div>
         </div>
       )}
+
+      {/* 使用说明模态框 */}
+      <HelpModal
+        isOpen={showHelp}
+        onClose={handleCloseHelp}
+      />
     </div>
   );
 }
