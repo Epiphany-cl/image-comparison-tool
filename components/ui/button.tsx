@@ -1,19 +1,32 @@
+/**
+ * 按钮组件
+ *
+ * 基于 Radix UI Slot 和 class-variance-authority (CVA) 构建的可复用按钮组件
+ *
+ * 功能特性：
+ * - 支持多种样式变体（default, destructive, outline, secondary, ghost, link）
+ * - 支持多种尺寸（default, sm, lg, icon, icon-sm, icon-lg）
+ * - 支持 asChild 属性，可渲染为子组件
+ * - 完整的无障碍支持
+ * - 深色模式支持
+ */
+
 import * as React from 'react';
-// Radix UI Slot component for merging props and functionality into a child element.
 import { Slot } from '@radix-ui/react-slot';
-// class-variance-authority is a library for creating variants of a component.
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
-// 使用 cva (class-variance-authority) 定义按钮的样式变体
-// 第一个参数是所有变体共享的基础样式
+/**
+ * 按钮样式变体定义
+ * 使用 CVA (class-variance-authority) 管理按钮的多种样式组合
+ */
 const buttonVariants = cva(
+  // 基础样式：所有按钮共有的样式
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*=\'size-\'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
   {
-    // 定义不同的样式变体
     variants: {
-      // 'variant' 定义了按钮的视觉风格
+      // 样式变体：控制按钮的外观
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive:
@@ -26,7 +39,7 @@ const buttonVariants = cva(
           'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline'
       },
-      // 'size' 定义了按钮的尺寸
+      // 尺寸变体：控制按钮的大小
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',
         sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
@@ -36,34 +49,35 @@ const buttonVariants = cva(
         'icon-lg': 'size-10'
       }
     },
-    // 默认的变体配置
     defaultVariants: {
+      // 默认变体
       variant: 'default',
       size: 'default'
     }
   }
 );
 
-// 按钮组件
+/**
+ * 按钮组件属性接口
+ * 继承自 React button 元素的属性，并添加自定义属性
+ */
 function Button({
-  className,
-  variant,
-  size,
-  asChild = false, // 'asChild' prop 允许将按钮的样式和行为应用到其子组件上
-  ...props
+  className,           // 自定义类名
+  variant,             // 样式变体
+  size,                // 尺寸变体
+  asChild = false,     // 是否渲染为子组件
+  ...props             // 其他属性
 }: React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
+    asChild?: boolean  // 是否使用 Radix UI Slot 渲染子组件
   }) {
-  // 如果 asChild 为 true，则使用 Radix UI 的 Slot 组件作为根元素，
-  // 否则使用标准的 <button> 元素。
-  // Slot 会将传递给它的 props (如 className, onClick 等) 合并到它的直接子元素上。
+  // 根据 asChild 属性决定渲染为 button 还是 Slot
   const Comp = asChild ? Slot : 'button';
 
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))} // 使用 cn 工具函数合并基础样式、变体样式和传入的 className
+      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );

@@ -1,66 +1,79 @@
+/**
+ * 图片对比主组件
+ *
+ * 核心功能：
+ * 1. 左右并排显示两张图片进行对比
+ * 2. 支持拖拽上传、点击上传、粘贴上传
+ * 3. 同步/独立缩放和平移
+ * 4. 多种交互方式：鼠标拖拽、滚轮缩放、触控板手势
+ * 5. 深色模式支持
+ * 6. 国际化支持
+ */
+
 'use client';
 
 import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-// icon图标
 import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle, Lock, Unlock } from 'lucide-react';
-// 手势库
 import { useGesture } from '@use-gesture/react';
-// UI组件
 import { Button } from '@/components/ui/button';
 import LiquidGlass from '@/components/ui/liquid-glass';
-// 使用说明组件
 import { HelpModal } from '@/components/help-modal';
-// 样式工具
 import { cn } from '@/lib/utils';
-// i18n
 import { useI18n } from '@/lib/i18n';
 import type { Translations } from '@/lib/locales';
 
-// 视图状态接口，定义了缩放和平移的参数
+/**
+ * 视图状态接口
+ * 记录图片的缩放和平移状态
+ */
 interface ViewState {
-  scale: number; // 缩放比例
-  offsetX: number; // X轴偏移量
-  offsetY: number; // Y轴偏移量
-}
-
-// 图片信息接口
-interface ImageInfo {
-  src: string; // 图片的URL
-  width: number; // 图片原始宽度
-  height: number; // 图片原始高度
-  baseScale: number; // 图片加载后的初始缩放比例，用于适配容器
-}
-
-// 单个图片面板的属性接口
-interface ImagePanelProps {
-  image: ImageInfo | null; // 图片信息
-  onUpload: (file: File) => void; // 上传回调
-  onDelete: () => void; // 删除回调
-  viewState: ViewState; // 视图状态
-  onViewChange: (state: ViewState) => void; // 视图状态变更回调
-  label: string; // 面板标签 (A/B)
-  isLoading: boolean; // 是否正在加载
-  t: Translations; // 翻译对象
+  scale: number;    // 缩放比例
+  offsetX: number;  // X 轴偏移量
+  offsetY: number;  // Y 轴偏移量
 }
 
 /**
- * 单个图片显示面板
- * 负责处理单张图片的拖拽上传、手势交互（平移、缩放）和显示
- * @param image
- * @param onUpload
- * @param onDelete
- * @param viewState
- * @param onViewChange
- * @param label
- * @param isLoading
- * @constructor
+ * 图片信息接口
+ */
+interface ImageInfo {
+  src: string;        // 图片 URL（Blob URL）
+  width: number;      // 图片原始宽度
+  height: number;     // 图片原始高度
+  baseScale: number;  // 基础缩放比例（使图片适应容器）
+}
+
+/**
+ * 图片面板属性接口
+ */
+interface ImagePanelProps {
+  image: ImageInfo | null;                    // 图片信息
+  onUpload: (file: File) => void;            // 上传回调
+  onDelete: () => void;                      // 删除回调
+  viewState: ViewState;                      // 视图状态
+  onViewChange: (state: ViewState) => void;  // 视图变化回调
+  label: string;                             // 面板标签（'A' 或 'B'）
+  isLoading: boolean;                        // 是否正在加载
+  t: Translations;                           // 翻译文本
+}
+
+/**
+ * 图片面板组件
+ *
+ * 功能：
+ * - 显示图片或上传提示
+ * - 处理拖拽上传
+ * - 处理手势交互（拖拽、缩放、滚轮）
+ * - 显示图片尺寸信息
+ * - 提供删除按钮
  */
 function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label, isLoading, t }: ImagePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 处理文件拖拽上传
+  /**
+   * 处理拖拽上传
+   */
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -72,30 +85,31 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
     [onUpload]
   );
 
-  // 处理通过文件输入框选择的图片
+  /**
+   * 处理文件选择上传
+   */
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
         onUpload(file);
       }
-      // 清空 input，允许重复选择同一文件
       e.target.value = '';
     },
     [onUpload]
   );
 
-  // 使用 @use-gesture/react 库来处理拖拽、捏合缩放和滚轮事件
+  /**
+   * 使用 @use-gesture/react 处理手势交互
+   */
   useGesture(
     {
-      // 拖拽事件：用于平移图片
+      // 拖拽处理：平移图片
       onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
         if (!image) { return; }
-        // 在拖拽开始时记录初始偏移量
         if (first) {
           memo = { x: viewState.offsetX, y: viewState.offsetY };
         }
-        // 更新视图状态，实现平移
         onViewChange({
           ...viewState,
           offsetX: memo.x + mx,
@@ -103,12 +117,11 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
         });
         return memo;
       },
-      // 捏合事件：用于双指缩放
+      // 捏合缩放处理：以捏合中心点为基准缩放
       onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
         if (!image) { return; }
-        event.preventDefault(); // 阻止浏览器默认的捏合行为
+        event.preventDefault();
 
-        // 在捏合开始时，计算鼠标相对于容器的位置和初始缩放信息
         if (first) {
           const rect = containerRef.current?.getBoundingClientRect();
           if (!rect) { return { initialScale: viewState.scale, initialOffset: { x: 0, y: 0 }, mouseX: 0, mouseY: 0 }; }
@@ -124,12 +137,11 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           };
         }
 
-        // 根据捏合手势的移动距离计算新的缩放比例，并限制在0.1到10倍之间
         const { initialScale, initialOffset, mouseX, mouseY } = memo;
         const newScale = Math.min(Math.max(initialScale * ms, 0.1), 10);
         const scaleDiff = newScale / initialScale;
 
-        // 以鼠标位置为中心进行缩放，调整偏移量
+        // 计算新的偏移量，使缩放以捏合中心为基准
         const newOffsetX = mouseX - (mouseX - initialOffset.x) * scaleDiff;
         const newOffsetY = mouseY - (mouseY - initialOffset.y) * scaleDiff;
 
@@ -141,23 +153,21 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
 
         return memo;
       },
-      // 滚轮事件：用于鼠标滚轮缩放或触控板平移
+      // 滚轮处理：区分触控板平移和鼠标滚轮缩放
       onWheel: ({ event, delta: [dx, dy] }) => {
         if (!image) { return; }
-        // 按住Ctrl键时，不处理滚轮事件（通常用于浏览器缩放）
         if (event.ctrlKey) { return; }
 
-        // 如果是水平滚动，则阻止默认行为（如页面左右滚动）
+        // 水平滚动时阻止默认行为
         if (Math.abs(dx) > Math.abs(dy)) {
           event.preventDefault();
         }
 
-        // 判断是触控板滚动还是鼠标滚轮
-        // 触控板的deltaY值通常较小
+        // 判断是触控板还是鼠标滚轮
         const isTrackpad = Math.abs(dy) < 40;
 
         if (isTrackpad) {
-          // 触控板滚动用于平移
+          // 触控板：平移图片
           event.preventDefault();
           onViewChange({
             ...viewState,
@@ -165,12 +175,11 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
             offsetY: viewState.offsetY - dy
           });
         } else {
-          // 鼠标滚轮用于缩放
+          // 鼠标滚轮：以光标为中心缩放
           event.preventDefault();
-          const delta = dy > 0 ? 0.9 : 1.1; // 根据滚动方向确定缩放因子
+          const delta = dy > 0 ? 0.9 : 1.1;
           const newScale = Math.min(Math.max(viewState.scale * delta, 0.1), 10);
 
-          // 以鼠标指针位置为中心进行缩放
           const rect = containerRef.current?.getBoundingClientRect();
           if (rect) {
             const mouseX = event.clientX - rect.left - rect.width / 2;
@@ -190,13 +199,13 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       }
     },
     {
-      target: containerRef, // 将手势绑定到容器元素
-      eventOptions: { passive: false }, // passive: false 是为了能调用 e.preventDefault()
-      enabled: !!image // 仅在有图片时启用手势
+      target: containerRef,
+      eventOptions: { passive: false },
+      enabled: !!image
     }
   );
 
-  // 计算最终应用到图片上的总缩放比例
+  // 计算实际显示的缩放比例（基础缩放 * 视图缩放）
   const displayScale = image ? viewState.scale * image.baseScale : viewState.scale;
 
   return (
@@ -204,38 +213,38 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       ref={containerRef}
       className={cn(
         'h-full relative overflow-hidden',
-        image ? 'cursor-grab active:cursor-grabbing' : '', // 根据是否有图片设置鼠标样式
-        isLoading && 'cursor-wait' // 加载中设置等待鼠标样式
+        image ? 'cursor-grab active:cursor-grabbing' : '',
+        isLoading && 'cursor-wait'
       )}
       style={{ touchAction: 'none' }}
       onDrop={handleDrop}
-      onDragOver={(e) => e.preventDefault()} // 必须阻止默认行为才能触发onDrop
+      onDragOver={(e) => e.preventDefault()}
     >
+      {/* 加载状态 */}
       {isLoading ? (
-        // 加载中状态
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none pointer-events-none">
           <Loader2 className="h-10 w-10 animate-spin text-neutral-600 dark:text-white/70" />
           <p className="text-sm text-neutral-600 dark:text-white/70">{t.processing}</p>
         </div>
       ) : image ? (
-        // 已加载图片状态
         <>
+          {/* 图片显示区域 */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{
               transform: `translate(${viewState.offsetX}px, ${viewState.offsetY}px) scale(${displayScale})`,
               transformOrigin: 'center center',
-              willChange: 'transform' // 优化动画性能
+              willChange: 'transform'
             }}
           >
             <img
               src={image.src}
               alt={label}
-              className="max-w-none select-none pointer-events-none" // 防止图片被选中或拖拽
+              className="max-w-none select-none pointer-events-none"
               draggable={false}
             />
           </div>
-          {/* 显示图片尺寸信息 */}
+          {/* 图片尺寸信息 */}
           <LiquidGlass
             radius={12}
             frost={0.1}
@@ -244,7 +253,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           >
             {image.width} × {image.height}
           </LiquidGlass>
-          {/* 删除图片按钮 */}
+          {/* 删除按钮 */}
           <LiquidGlass
             radius={8}
             frost={0.1}
@@ -264,7 +273,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           </LiquidGlass>
         </>
       ) : (
-        // 空状态，等待上传
+        /* 上传提示 */
         <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <ImageIcon className="h-10 w-10 opacity-40" />
@@ -280,28 +289,36 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
 }
 
 /**
- * 核心组件：图片比较器
- * 管理左右两个图片面板的状态，以及共享的视图状态（缩放、平移）和控制栏
- * @constructor
+ * 图片对比主组件
+ *
+ * 功能：
+ * - 管理左右两张图片的状态
+ * - 控制同步/独立模式
+ * - 处理上传、删除、清空等操作
+ * - 提供缩放、重置等控制功能
+ * - 支持粘贴上传
+ * - 显示帮助模态框
  */
 export function ImageCompare() {
   const { t, locale, setLocale } = useI18n();
+  // 左右图片状态
   const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);
   const [rightImage, setRightImage] = useState<ImageInfo | null>(null);
 
+  // 加载状态
   const [leftLoading, setLeftLoading] = useState(false);
   const [rightLoading, setRightLoading] = useState(false);
 
   // Toast 消息状态
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // 使用说明模态框状态
+  // 帮助模态框显示状态
   const [showHelp, setShowHelp] = useState(false);
 
-  // 是否锁定同步
+  // 同步模式状态
   const [isSynced, setIsSynced] = useState(true);
 
-  // 左右两侧独立的视图状态
+  // 左右视图状态
   const [leftViewState, setLeftViewState] = useState<ViewState>({
     scale: 1,
     offsetX: 0,
@@ -314,15 +331,17 @@ export function ImageCompare() {
     offsetY: 0
   });
 
-  // 统一的视图变更处理函数
+  /**
+   * 处理视图变化
+   * 在同步模式下，一侧的变化会同步到另一侧
+   */
   const handleViewChange = useCallback((side: 'left' | 'right', newState: ViewState) => {
-    // 总是更新触发侧的状态
     if (side === 'left') {
       const oldState = leftViewState;
       setLeftViewState(newState);
 
-      // 如果同步开启，则计算变化量并应用到右侧
       if (isSynced) {
+        // 计算缩放比例和偏移量变化，同步到右侧
         const scaleRatio = newState.scale / oldState.scale;
         const dx = newState.offsetX - oldState.offsetX;
         const dy = newState.offsetY - oldState.offsetY;
@@ -337,8 +356,8 @@ export function ImageCompare() {
       const oldState = rightViewState;
       setRightViewState(newState);
 
-      // 如果同步开启，则计算变化量并应用到左侧
       if (isSynced) {
+        // 计算缩放比例和偏移量变化，同步到左侧
         const scaleRatio = newState.scale / oldState.scale;
         const dx = newState.offsetX - oldState.offsetX;
         const dy = newState.offsetY - oldState.offsetY;
@@ -354,10 +373,10 @@ export function ImageCompare() {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 使用 ref 存储由 URL.createObjectURL 创建的 URL，以便在组件卸载时进行清理
+  // 管理 Blob URL，防止内存泄漏
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
-  // 使用 ref 来存储最新的图片信息，解决 useCallback 闭包问题
+  // 使用 ref 存储图片信息，避免闭包问题
   const leftImageRef = useRef<ImageInfo | null>(null);
   const rightImageRef = useRef<ImageInfo | null>(null);
 
@@ -369,7 +388,7 @@ export function ImageCompare() {
     rightImageRef.current = rightImage;
   }, [rightImage]);
 
-  // 监听系统颜色方案变化，并切换亮/暗主题
+  // 监听系统深色模式变化
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -381,34 +400,35 @@ export function ImageCompare() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-
-  // 计算图片的初始缩放比例，使其能完整地显示在容器内
+  /**
+   * 计算基础缩放比例
+   * 使图片适应容器大小
+   */
   const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
     const container = containerRef.current;
     if (!container) { return 1; }
 
-    // 容器的可用宽高（减去一些内边距）
     const containerWidth = container.clientWidth / 2 - 32;
     const containerHeight = container.clientHeight - 32;
 
     const scaleX = containerWidth / imgWidth;
     const scaleY = containerHeight / imgHeight;
 
-    // 取较小的缩放比例，并确保不超过1（即图片不进行放大）
     return Math.min(scaleX, scaleY, 1);
   }, []);
 
-  // 处理图片上传的核心逻辑
+  /**
+   * 处理图片上传
+   */
   const handleUpload = useCallback(
     (file: File, side: 'left' | 'right') => {
-      // 设置加载状态
       if (side === 'left') {
         setLeftLoading(true);
       } else {
         setRightLoading(true);
       }
 
-      // 释放旧的 Object URL，防止内存泄漏
+      // 清理旧的 Blob URL
       const oldUrl = side === 'left' ? leftImageRef.current?.src : rightImageRef.current?.src;
       if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
         URL.revokeObjectURL(oldUrl);
@@ -420,7 +440,6 @@ export function ImageCompare() {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
-          // 图片加载成功后，计算初始缩放比例并更新状态
           const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
 
           objectUrlsRef.current.add(objectUrl);
@@ -443,7 +462,6 @@ export function ImageCompare() {
         };
 
         img.onerror = () => {
-          // 图片加载失败处理 - 立即释放 URL
           URL.revokeObjectURL(objectUrl);
           if (side === 'left') {
             setLeftLoading(false);
@@ -461,18 +479,20 @@ export function ImageCompare() {
     [calculateBaseScale, t]
   );
 
-  // 重置视图状态
+  /**
+   * 重置视图状态
+   */
   const handleReset = useCallback(() => {
     const initialState = { scale: 1, offsetX: 0, offsetY: 0 };
     setLeftViewState(initialState);
     setRightViewState(initialState);
-    setIsSynced(true); // 重置时默认开启同步
+    setIsSynced(true);
   }, []);
 
-  // 放大
+  /**
+   * 放大图片
+   */
   const handleZoomIn = useCallback(() => {
-    // 统一以左侧状态为基准进行按钮缩放（如果锁定），或者只缩放有图的一侧？
-    // 简单起见，按钮缩放时强制应用到两侧（模拟同步操作）
     const newStateFn = (prev: ViewState) => ({
       ...prev,
       scale: Math.min(prev.scale * 1.25, 10)
@@ -482,7 +502,9 @@ export function ImageCompare() {
     setRightViewState(newStateFn);
   }, []);
 
-  // 缩小
+  /**
+   * 缩小图片
+   */
   const handleZoomOut = useCallback(() => {
     const newStateFn = (prev: ViewState) => ({
       ...prev,
@@ -496,7 +518,9 @@ export function ImageCompare() {
   const hasImages = leftImage || rightImage;
   const isLoading = leftLoading || rightLoading;
 
-  // 统一清理所有 Object URL 的函数
+  /**
+   * 清理所有 Blob URL
+   */
   const cleanupAllUrls = useCallback(() => {
     objectUrlsRef.current.forEach((url) => {
       URL.revokeObjectURL(url);
@@ -504,19 +528,20 @@ export function ImageCompare() {
     objectUrlsRef.current.clear();
   }, []);
 
-  // 在组件卸载时调用清理函数
+  // 组件卸载时清理 Blob URL
   useEffect(() => {
     return () => {
       cleanupAllUrls();
     };
   }, [cleanupAllUrls]);
 
-  // 删除单侧图片
+  /**
+   * 删除单张图片
+   */
   const handleDeleteImage = useCallback(
     (side: 'left' | 'right') => {
       const imageRef = side === 'left' ? leftImageRef : rightImageRef;
       const oldUrl = imageRef.current?.src;
-      // 释放 Object URL
       if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
         URL.revokeObjectURL(oldUrl);
         objectUrlsRef.current.delete(oldUrl);
@@ -531,7 +556,9 @@ export function ImageCompare() {
     []
   );
 
-  // 清空所有图片和状态
+  /**
+   * 清空所有图片
+   */
   const handleClearAll = useCallback(() => {
     cleanupAllUrls();
     setLeftImage(null);
@@ -541,27 +568,33 @@ export function ImageCompare() {
     handleReset();
   }, [cleanupAllUrls, handleReset]);
 
-  // 显示 Toast 消息
+  /**
+   * 显示 Toast 消息
+   */
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000); // 3秒后自动消失
+    setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // 打开使用说明
+  /**
+   * 打开帮助模态框
+   */
   const handleOpenHelp = useCallback(() => {
     setShowHelp(true);
   }, []);
 
-  // 关闭使用说明
+  /**
+   * 关闭帮助模态框
+   */
   const handleCloseHelp = useCallback(() => {
     setShowHelp(false);
   }, []);
 
-  // 处理粘贴事件
+  /**
+   * 处理粘贴上传
+   */
   const handlePaste = useCallback(
     async(e: ClipboardEvent) => {
-      // 阻止默认粘贴行为，避免在输入框中粘贴文本
-      // 但只在有图片时才阻止，允许文本粘贴
       const items = e.clipboardData?.items;
       if (!items) {return;}
 
@@ -575,14 +608,11 @@ export function ImageCompare() {
       }
 
       if (!hasImage) {
-        // 没有图片，不阻止默认行为，也不显示错误
         return;
       }
 
-      // 阻止默认行为，避免在页面中粘贴图片
       e.preventDefault();
 
-      // 获取图片文件
       const imageItem = Array.from(items).find((item) => item.type.startsWith('image/'));
       if (!imageItem) {
         showToast(t.pasteErrorNoImage, 'error');
@@ -595,18 +625,16 @@ export function ImageCompare() {
         return;
       }
 
-      // 智能选择插入位置
+      // 确定上传到哪一侧
       let targetSide: 'left' | 'right';
       if (!leftImage) {
         targetSide = 'left';
       } else if (!rightImage) {
         targetSide = 'right';
       } else {
-        // 两个面板都有图片，优先替换左侧（或者可以根据当前焦点判断）
         targetSide = 'left';
       }
 
-      // 执行上传
       try {
         await handleUpload(file, targetSide);
         const sideName = targetSide === 'left' ? 'A' : 'B';
@@ -618,9 +646,8 @@ export function ImageCompare() {
     [handleUpload, leftImage, rightImage, showToast, t]
   );
 
-  // 监听粘贴事件
+  // 监听粘贴事件（仅在桌面端）
   useEffect(() => {
-    // 只在桌面端启用粘贴功能
     const isDesktop = window.innerWidth >= 768;
     if (!isDesktop) {return;}
 
@@ -629,15 +656,15 @@ export function ImageCompare() {
   }, [handlePaste]);
 
   return (
-    // 'hidden md:flex' 在移动端隐藏此组件，仅在桌面端显示
     <div className="flex flex-col h-screen bg-background hidden md:flex">
-      {/* 顶部中央控制栏 */}
+      {/* 顶部控制栏 */}
       <LiquidGlass
         radius={16}
         frost={0.1}
         containerClassName="absolute top-3 left-1/2 -translate-x-1/2 z-10"
         className="flex items-center gap-1 px-3 py-1.5"
       >
+        {/* 标题 */}
         <div className="flex items-center min-w-[120px] justify-center px-2">
           <div className="relative flex items-center justify-center">
             {isLoading && (
@@ -649,10 +676,11 @@ export function ImageCompare() {
           </div>
         </div>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        {/* 缩放比例显示 */}
         <span className="text-xs text-neutral-600 dark:text-white/70 px-2 font-mono">
-          {/* 显示左侧图片的缩放比例作为参考 */}
           {Math.round(leftViewState.scale * 100)}%
         </span>
+        {/* 缩小按钮 */}
         <Button
           variant="ghost"
           size="icon"
@@ -662,6 +690,7 @@ export function ImageCompare() {
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
+        {/* 放大按钮 */}
         <Button
           variant="ghost"
           size="icon"
@@ -671,6 +700,7 @@ export function ImageCompare() {
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
+        {/* 重置按钮 */}
         <Button
           variant="ghost"
           size="icon"
@@ -681,8 +711,8 @@ export function ImageCompare() {
           <RotateCcw className="h-4 w-4" />
         </Button>
 
-        {/* 新增：锁定/解锁同步按钮 */}
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        {/* 同步/独立切换按钮 */}
         <Button
           variant="ghost"
           size="icon"
@@ -700,6 +730,7 @@ export function ImageCompare() {
         </Button>
 
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        {/* 清空按钮 */}
         <Button
           variant="ghost"
           size="sm"
@@ -710,6 +741,7 @@ export function ImageCompare() {
           {t.clear}
         </Button>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        {/* 语言切换按钮 */}
         <Button
           variant="ghost"
           size="sm"
@@ -720,6 +752,7 @@ export function ImageCompare() {
           {t.switchTo}
         </Button>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        {/* 帮助按钮 */}
         <Button
           variant="ghost"
           size="sm"
@@ -731,30 +764,31 @@ export function ImageCompare() {
         </Button>
       </LiquidGlass>
 
-      {/* 图片面板容器 */}
+      {/* 图片显示区域 */}
       <div ref={containerRef} className="flex-1 flex min-h-0 relative">
+        {/* 左侧图片面板 */}
         <div className="flex-1 bg-secondary">
-          {/* 左侧图片面板 */}
           <ImagePanel
             image={leftImage}
             onUpload={(file) => handleUpload(file, 'left')}
             onDelete={() => handleDeleteImage('left')}
-            viewState={leftViewState} // 使用左侧独立状态
-            onViewChange={(newState) => handleViewChange('left', newState)} // 传递侧边标识
+            viewState={leftViewState}
+            onViewChange={(newState) => handleViewChange('left', newState)}
             label="A"
             isLoading={leftLoading}
             t={t}
           />
         </div>
+        {/* 中间分隔线 */}
         <div className="w-px bg-white/20 dark:bg-white/10 backdrop-blur-sm" />
+        {/* 右侧图片面板 */}
         <div className="flex-1 bg-secondary">
-          {/* 右侧图片面板 */}
           <ImagePanel
             image={rightImage}
             onUpload={(file) => handleUpload(file, 'right')}
             onDelete={() => handleDeleteImage('right')}
-            viewState={rightViewState} // 使用右侧独立状态
-            onViewChange={(newState) => handleViewChange('right', newState)} // 传递侧边标识
+            viewState={rightViewState}
+            onViewChange={(newState) => handleViewChange('right', newState)}
             label="B"
             isLoading={rightLoading}
             t={t}
@@ -784,7 +818,7 @@ export function ImageCompare() {
         </LiquidGlass>
       )}
 
-      {/* 使用说明模态框 */}
+      {/* 帮助模态框 */}
       <HelpModal
         isOpen={showHelp}
         onClose={handleCloseHelp}

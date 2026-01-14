@@ -1,3 +1,18 @@
+/**
+ * 帮助模态框组件
+ *
+ * 提供用户使用指南，包含三个标签页：
+ * 1. 开始使用：介绍如何上传和对比图片
+ * 2. 交互手势：介绍各种操作方式（拖拽、缩放、平移等）
+ * 3. 常见问题：解答用户常见疑问
+ *
+ * 功能特性：
+ * - 支持键盘 ESC 键关闭
+ * - 打开时禁止背景滚动
+ * - 响应式设计
+ * - 流畅的进入/退出动画
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,22 +21,28 @@ import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
+/**
+ * 帮助模态框属性接口
+ */
 interface HelpModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen: boolean;      // 是否打开模态框
+  onClose: () => void;  // 关闭回调函数
 }
 
+/**
+ * 标签页 ID 类型
+ */
 type TabId = 'getting-started' | 'gestures' | 'faq';
 
 /**
- * 使用说明模态框组件
- * 提供产品功能概述、操作步骤指引、常见问题解答和交互式引导
+ * 帮助模态框主组件
  */
 export function HelpModal({ isOpen, onClose }: HelpModalProps) {
   const { t } = useI18n();
+  // 当前激活的标签页
   const [activeTab, setActiveTab] = useState<TabId>('getting-started');
 
-  // 阻止背景滚动
+  // 控制背景滚动：打开时禁止滚动，关闭时恢复
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -33,7 +54,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
     };
   }, [isOpen]);
 
-  // ESC键关闭
+  // 监听 ESC 键关闭模态框
   useEffect(() => {
     if (!isOpen) {return;}
 
@@ -47,17 +68,24 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
     return () => document.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
+  // 如果模态框未打开，不渲染任何内容
   if (!isOpen) {return null;}
 
+  // 标签页配置
   const tabs = [
     { id: 'getting-started', label: t.gettingStarted, icon: Upload },
     { id: 'gestures', label: t.gestures, icon: MousePointer },
     { id: 'faq', label: t.faq, icon: AlertCircle }
   ];
 
+  /**
+   * 标签页内容渲染组件
+   * 根据当前激活的标签页显示不同的内容
+   */
   const TabContent = () => {
     switch (activeTab) {
       case 'getting-started':
+        // 开始使用标签页内容
         return (
           <div className="space-y-6">
             <div className="space-y-4">
@@ -85,6 +113,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         );
 
       case 'gestures':
+        // 交互手势标签页内容
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
@@ -142,6 +171,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         );
 
       case 'faq':
+        // 常见问题标签页内容
         return (
           <div className="space-y-4">
             <div className="space-y-4">
@@ -172,17 +202,17 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 背景遮罩 */}
+      {/* 背景遮罩：点击可关闭模态框 */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
         onClick={onClose}
       />
 
-      {/* 模态框内容 */}
+      {/* 模态框主体 */}
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl
         bg-background border border-border shadow-2xl animate-in slide-in-from-bottom-4 fade-in"
       >
-        {/* 头部 */}
+        {/* 头部：标题和关闭按钮 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-secondary/30">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -227,12 +257,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           })}
         </div>
 
-        {/* 内容区域 */}
+        {/* 标签页内容区域 */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
           <TabContent />
         </div>
 
-        {/* 底部操作栏 */}
+        {/* 底部按钮 */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border/50 bg-secondary/20">
           <Button
             variant="ghost"
