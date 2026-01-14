@@ -9,6 +9,7 @@ import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCirc
 import { useGesture } from '@use-gesture/react';
 // UI组件
 import { Button } from '@/components/ui/button';
+import LiquidGlass from '@/components/ui/LiquidGlass';
 // 使用说明组件
 import { HelpModal } from '@/components/help-modal';
 // 样式工具
@@ -235,32 +236,32 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
             />
           </div>
           {/* 显示图片尺寸信息 */}
-          <div
-            className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl text-xs font-mono
-            bg-white/20 dark:bg-white/10 backdrop-blur-xl
-            border border-white/30 dark:border-white/20
-            text-neutral-800 dark:text-white
-            shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
-            dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]"
+          <LiquidGlass
+            radius={12}
+            frost={0.1}
+            containerClassName="absolute bottom-3 left-3"
+            className="px-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-white"
           >
             {image.width} × {image.height}
-          </div>
+          </LiquidGlass>
           {/* 删除图片按钮 */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`absolute top-3 h-7 w-7 rounded-lg
-            bg-white/20 dark:bg-white/10 backdrop-blur-xl
-            border border-white/30 dark:border-white/20
-            text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white
-            hover:bg-white/30 dark:hover:bg-white/20
-            shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
-            dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]
-            ${label === 'A' ? 'left-3' : 'right-3'}`}
-            onClick={onDelete}
+          <LiquidGlass
+            radius={8}
+            frost={0.1}
+            containerClassName={cn(
+              'absolute top-3 h-7 w-7',
+              label === 'A' ? 'left-3' : 'right-3'
+            )}
           >
-            <X className="h-4 w-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-full w-full rounded-none bg-transparent border-none shadow-none text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/10"
+              onClick={onDelete}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </LiquidGlass>
         </>
       ) : (
         // 空状态，等待上传
@@ -631,12 +632,11 @@ export function ImageCompare() {
     // 'hidden md:flex' 在移动端隐藏此组件，仅在桌面端显示
     <div className="flex flex-col h-screen bg-background hidden md:flex">
       {/* 顶部中央控制栏 */}
-      <div
-        className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1.5 rounded-2xl
-        bg-white/20 dark:bg-white/10 backdrop-blur-xl
-        border border-white/30 dark:border-white/20
-        shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
-        dark:shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]"
+      <LiquidGlass
+        radius={16}
+        frost={0.1}
+        containerClassName="absolute top-3 left-1/2 -translate-x-1/2 z-10"
+        className="flex items-center gap-1 px-3 py-1.5"
       >
         <div className="flex items-center min-w-[120px] justify-center px-2">
           <div className="relative flex items-center justify-center">
@@ -687,10 +687,10 @@ export function ImageCompare() {
           variant="ghost"
           size="icon"
           className={cn(
-            "h-7 w-7 rounded-lg transition-colors",
-            isSynced 
-              ? "text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20" 
-              : "text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+            'h-7 w-7 rounded-lg transition-colors',
+            isSynced
+              ? 'text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20'
+              : 'text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50'
           )}
           onClick={() => setIsSynced(!isSynced)}
           disabled={!hasImages || isLoading}
@@ -729,7 +729,7 @@ export function ImageCompare() {
           <HelpCircle className="h-3.5 w-3.5" />
           {t.help}
         </Button>
-      </div>
+      </LiquidGlass>
 
       {/* 图片面板容器 */}
       <div ref={containerRef} className="flex-1 flex min-h-0 relative">
@@ -764,25 +764,24 @@ export function ImageCompare() {
 
       {/* Toast 消息提示 */}
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2">
-          <div
-            className={cn(
-              'px-4 py-3 rounded-xl shadow-lg backdrop-blur-xl border',
-              'flex items-center gap-2 min-w-[280px] justify-center',
-              'bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/20',
-              toast.type === 'success'
-                ? 'text-green-700 dark:text-green-300'
-                : 'text-red-700 dark:text-red-300'
-            )}
-          >
-            {toast.type === 'success' ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <AlertCircle className="h-4 w-4" />
-            )}
-            <span className="text-sm font-medium">{toast.message}</span>
-          </div>
-        </div>
+        <LiquidGlass
+          radius={16}
+          frost={0.15}
+          containerClassName="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2"
+          className={cn(
+            'px-4 py-3 min-w-[280px] flex items-center gap-2 justify-center',
+            toast.type === 'success'
+              ? 'text-green-700 dark:text-green-300'
+              : 'text-red-700 dark:text-red-300'
+          )}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </LiquidGlass>
       )}
 
       {/* 使用说明模态框 */}
