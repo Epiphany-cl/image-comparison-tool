@@ -185,7 +185,7 @@ const LiquidGlass: React.FC<LiquidGlassProps> = ({
       style={dynamicStyle}
     >
       {/* 内容区域 */}
-      <div className={cn('w-full h-full overflow-hidden [border-radius:inherit]', className)}>
+      <div className={cn('w-full h-full overflow-hidden rounded-[inherit]', className)}>
         {children}
       </div>
 

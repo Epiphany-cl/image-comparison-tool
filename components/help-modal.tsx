@@ -90,7 +90,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           <div className="space-y-6">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
                   <Upload className="w-4 h-4 text-blue-500" />
                 </div>
                 <div>
@@ -100,7 +100,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 </div>
                 <div>
@@ -118,7 +118,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                <div className="flex-shrink-0 w-6 h-6 rounded bg-purple-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 rounded bg-purple-500/20 flex items-center justify-center">
                   <MousePointer className="w-3.5 h-3.5 text-purple-500" />
                 </div>
                 <div>
@@ -128,7 +128,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                <div className="flex-shrink-0 w-6 h-6 rounded bg-orange-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 rounded bg-orange-500/20 flex items-center justify-center">
                   <Hand className="w-3.5 h-3.5 text-orange-500" />
                 </div>
                 <div>
@@ -138,7 +138,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                <div className="flex-shrink-0 w-6 h-6 rounded bg-indigo-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 rounded bg-indigo-500/20 flex items-center justify-center">
                   <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
                 </div>
                 <div>
@@ -148,7 +148,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                <div className="flex-shrink-0 w-6 h-6 rounded bg-pink-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 rounded bg-pink-500/20 flex items-center justify-center">
                   <MousePointer className="w-3.5 h-3.5 text-pink-500" />
                 </div>
                 <div>
@@ -158,7 +158,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 border border-amber-500/10">
-                <div className="flex-shrink-0 w-6 h-6 rounded bg-amber-500/20 flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 rounded bg-amber-500/20 flex items-center justify-center">
                   <Unlock className="w-3.5 h-3.5 text-amber-500" />
                 </div>
                 <div>

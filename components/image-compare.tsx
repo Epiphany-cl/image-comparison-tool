@@ -656,7 +656,7 @@ export function ImageCompare() {
   }, [handlePaste]);
 
   return (
-    <div className="flex flex-col h-screen bg-background hidden md:flex">
+    <div className="flex flex-col h-screen bg-background md:flex">
       {/* 顶部控制栏 */}
       <LiquidGlass
         radius={16}
