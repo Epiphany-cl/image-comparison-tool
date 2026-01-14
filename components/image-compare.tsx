@@ -9,7 +9,7 @@ import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCirc
 import { useGesture } from '@use-gesture/react';
 // UI组件
 import { Button } from '@/components/ui/button';
-import LiquidGlass from '@/components/ui/LiquidGlass';
+import LiquidGlass from '@/components/ui/liquid-glass';
 // 使用说明组件
 import { HelpModal } from '@/components/help-modal';
 // 样式工具

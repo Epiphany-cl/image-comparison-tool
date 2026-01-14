@@ -2,7 +2,7 @@
 
 import { Monitor } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
-import LiquidGlass from '@/components/ui/LiquidGlass';
+import LiquidGlass from '@/components/ui/liquid-glass';
 
 /**
  * 在移动设备上显示的"暂不支持"组件
