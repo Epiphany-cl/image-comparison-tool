@@ -1,7 +1,7 @@
 # AI 代理指南
 
 ## 概述
-- 本仓库托管一个极简的 Next.js 图片对比工具。
+- 本仓库托管一个极简的 Next.js 多媒体（图片/视频）对比工具。
 - 本文档为 AI 智能体（如你）在此代码库中安全高效地操作提供了基本准则。
 
 ## 1. 构建、代码检查和测试命令
@@ -43,16 +43,17 @@
 
 ### 命名约定
 - **React 组件**：PascalCase（例如 `ImageCompare.tsx`）。
-- **文件名**：组件文件使用 kebab-case（例如 `image-compare.tsx`），遵循 `components/` 目录中现有的约定。
-- **钩子**：以 `use` 开头（例如 `useI18n`）。
-- **工具函数**：camelCase（例如 `calculateBaseScale`）。
-- **接口**：描述性强，如果文件中常用则前缀 I，否则仅使用名称（例如 `ViewState`、`ImageInfo`）。
+  - **文件名**：组件文件使用 kebab-case（例如 `image-compare.tsx`），遵循 `components/` 目录中现有的约定。
+  - **钩子**：以 `use` 开头（例如 `useI18n`）。
+  - **工具函数**：camelCase（例如 `calculateBaseScale`）。
+  - **接口**：描述性强，如果文件中常用则前缀 I，否则仅使用名称（例如 `ViewState`、`MediaInfo`）。
 
 ### 组件模式
 - **客户端**：由于使用了钩子和 DOM 事件监听器，大多数交互式组件需要 `'use client';`。
 - **样式**：使用 Tailwind CSS。利用 `@/lib/utils` 中的 `cn()` 工具函数来合并类。
 - **图标**：使用 `lucide-react`。
 - **动画/渐变**：查看 `components/ui/liquid-glass.tsx` 以了解项目的标志性玻璃态效果。
+- **视频同步**：视频对比通过 `ImageCompare.tsx` 中的同步状态和 `useEffect` 挂钩实现。修改时需确保播放状态和进度在两侧保持一致。
 
 ### 国际化（i18n）
 - **框架**：在 `lib/i18n.ts` 中使用基于 Context 的自定义 i18n。
@@ -64,14 +65,15 @@
 
 ### 错误处理
 - 对异步操作（例如文件读取、剪贴板访问）使用 `try/catch`。
-- 使用 `ImageCompare.tsx` 中内置的 `toast` 状态向用户显示错误或成功消息。
+- 使用 `ImageCompare.tsx` 中内置特有的 `toast` 状态向用户显示错误或成功消息。
 
-## 3. UI 和 UX 标准
+### 3. UI 和 UX 标准
 - **响应式**：该工具主要针对桌面端优化。在小屏幕上会显示 `MobileNotSupported`。
 - **视觉效果**：利用 OKLCH 色彩空间以获得更好的感知渐变。
 - **性能**：
-  - 当图片被删除或替换时，使用 `URL.revokeObjectURL` 撤销 Blob URL 以防止内存泄漏。
+  - 当媒体（图片或视频）被删除或替换时，使用 `URL.revokeObjectURL` 撤销 Blob URL 以防止内存泄漏。
   - 对传递给子组件的事件处理程序使用 `useCallback`。对昂贵的渲染使用 `React.memo`。
+
 
 ## 4. 项目结构
 - `/app`：App Router 页面和全局 CSS。

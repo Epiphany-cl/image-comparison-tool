@@ -17,13 +17,13 @@ import './globals.css';
 export const metadata: Metadata = {
   // 标题配置
   title: {
-    default: '图片对比工具 - 在线同步缩放和平移对比',
-    template: '%s - 图片对比工具'
+    default: '多媒体对比工具 - 在线图片与视频同步对比',
+    template: '%s - 多媒体对比工具'
   },
   // 页面描述
-  description: '一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。适用于设计师、摄影师等需要精确比较图片细节的用户。',
+  description: '一款功能强大的在线多媒体对比工具，支持图片与视频的同步缩放、平移、播放同步。适用于设计师、摄影师、视频剪辑师等需要精确比较细节的用户。',
   // SEO 关键词
-  keywords: ['图片对比', '图片比较', '同步缩放', '平移对比', '在线图片对比', '设计师工具', '摄影师工具'],
+  keywords: ['图片对比', '视频对比', '多媒体比较', '同步缩放', '平移对比', '在线视频对比', '设计师工具', '视频剪辑工具'],
   // 作者信息
   authors: [{ name: 'Chen Long' }],
   creator: 'Chen Long',
@@ -33,9 +33,9 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'zh_CN',
     url: 'https://epiphany-cl.github.io/image-comparison-tool/',
-    title: '图片对比工具 - 在线同步缩放和平移对比',
-    description: '一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。',
-    siteName: '图片对比工具'
+    title: '多媒体对比工具 - 在线图片与视频同步对比',
+    description: '一款功能强大的在线多媒体对比工具，支持图片与视频的同步缩放、平移及播放同步。',
+    siteName: '多媒体对比工具'
   },
   // 搜索引擎爬虫配置
   robots: {
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '图片对比工具'
+    title: '多媒体对比工具'
   },
   // 格式检测配置（禁用电话号码自动识别）
   formatDetection: {
@@ -145,15 +145,16 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebApplication',
-              'name': '图片对比工具',
-              'description': '一款功能强大的在线图片对比工具，支持同步缩放、平移和多种上传方式。',
+              'name': '多媒体对比工具',
+              'description': '一款功能强大的在线图片与视频对比工具，支持同步缩放、平移及播放同步。',
               'applicationCategory': 'DesignApplication',
               'operatingSystem': 'All',
               'url': 'https://epiphany-cl.github.io/image-comparison-tool/',
               'featureList': [
-                '双图并排实时对比',
-                '同步缩放和平移操作',
-                '支持拖拽上传文件',
+                '双面板实时对比',
+                '图片与视频同步缩放和平移',
+                '视频播放进度自动同步',
+                '支持拖拽上传及剪贴板粘贴',
                 '深色模式支持',
                 '触控板支持（捏合缩放、双指滑动平移）'
               ]

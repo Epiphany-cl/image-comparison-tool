@@ -15,7 +15,7 @@
 import type React from 'react';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle, Lock, Unlock } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle, Lock, Unlock, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useGesture } from '@use-gesture/react';
 import { Button } from '@/components/ui/button';
 import LiquidGlass from '@/components/ui/liquid-glass';
@@ -35,20 +35,31 @@ interface ViewState {
 }
 
 /**
- * 图片信息接口
+ * 媒体信息接口
  */
-interface ImageInfo {
-  src: string;        // 图片 URL（Blob URL）
-  width: number;      // 图片原始宽度
-  height: number;     // 图片原始高度
-  baseScale: number;  // 基础缩放比例（使图片适应容器）
+interface MediaInfo {
+  src: string;        // 媒体 URL（Blob URL）
+  width: number;      // 原始宽度
+  height: number;     // 原始高度
+  baseScale: number;  // 基础缩放比例（使媒体适应容器）
+  type: 'image' | 'video'; // 媒体类型
 }
 
 /**
- * 图片面板属性接口
+ * 视频控制接口
  */
-interface ImagePanelProps {
-  image: ImageInfo | null;                    // 图片信息
+interface VideoControls {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  isMuted: boolean;
+}
+
+/**
+ * 媒体面板属性接口
+ */
+interface MediaPanelProps {
+  media: MediaInfo | null;                    // 媒体信息
   onUpload: (file: File) => void;            // 上传回调
   onDelete: () => void;                      // 删除回调
   viewState: ViewState;                      // 视图状态
@@ -56,20 +67,24 @@ interface ImagePanelProps {
   label: string;                             // 面板标签（'A' 或 'B'）
   isLoading: boolean;                        // 是否正在加载
   t: Translations;                           // 翻译文本
+  videoControls?: VideoControls;             // 视频控制状态
+  onVideoControlChange?: (controls: Partial<VideoControls>) => void; // 视频控制变化回调
 }
 
 /**
- * 图片面板组件
+ * 媒体面板组件
  *
  * 功能：
- * - 显示图片或上传提示
+ * - 显示图片/视频或上传提示
  * - 处理拖拽上传
  * - 处理手势交互（拖拽、缩放、滚轮）
- * - 显示图片尺寸信息
+ * - 显示媒体尺寸信息
  * - 提供删除按钮
+ * - 提供视频播放控制
  */
-function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label, isLoading, t }: ImagePanelProps) {
+function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label, isLoading, t, videoControls, onVideoControlChange }: MediaPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   /**
    * 处理拖拽上传
@@ -78,7 +93,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
     (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith('image/')) {
+      if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
         onUpload(file);
       }
     },
@@ -100,13 +115,32 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
   );
 
   /**
+   * 同步视频状态到 DOM
+   */
+  useEffect(() => {
+    if (media?.type === 'video' && videoRef.current && videoControls) {
+      if (videoControls.isPlaying && videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+      } else if (!videoControls.isPlaying && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+
+      if (Math.abs(videoRef.current.currentTime - videoControls.currentTime) > 0.1) {
+        videoRef.current.currentTime = videoControls.currentTime;
+      }
+
+      videoRef.current.muted = videoControls.isMuted;
+    }
+  }, [media?.type, videoControls]);
+
+  /**
    * 使用 @use-gesture/react 处理手势交互
    */
   useGesture(
     {
-      // 拖拽处理：平移图片
+      // 拖拽处理：平移媒体
       onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
-        if (!image) { return; }
+        if (!media) { return; }
         if (first) {
           memo = { x: viewState.offsetX, y: viewState.offsetY };
         }
@@ -119,7 +153,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       },
       // 捏合缩放处理：以捏合中心点为基准缩放
       onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
-        if (!image) { return; }
+        if (!media) { return; }
         event.preventDefault();
 
         if (first) {
@@ -155,7 +189,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
       },
       // 滚轮处理：区分触控板平移和鼠标滚轮缩放
       onWheel: ({ event, delta: [dx, dy] }) => {
-        if (!image) { return; }
+        if (!media) { return; }
         if (event.ctrlKey) { return; }
 
         // 水平滚动时阻止默认行为
@@ -167,7 +201,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
         const isTrackpad = Math.abs(dy) < 40;
 
         if (isTrackpad) {
-          // 触控板：平移图片
+          // 触控板：平移内容
           event.preventDefault();
           onViewChange({
             ...viewState,
@@ -201,19 +235,19 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
     {
       target: containerRef,
       eventOptions: { passive: false },
-      enabled: !!image
+      enabled: !!media
     }
   );
 
   // 计算实际显示的缩放比例（基础缩放 * 视图缩放）
-  const displayScale = image ? viewState.scale * image.baseScale : viewState.scale;
+  const displayScale = media ? viewState.scale * media.baseScale : viewState.scale;
 
   return (
     <div
       ref={containerRef}
       className={cn(
         'h-full relative overflow-hidden',
-        image ? 'cursor-grab active:cursor-grabbing' : '',
+        media ? 'cursor-grab active:cursor-grabbing' : '',
         isLoading && 'cursor-wait'
       )}
       style={{ touchAction: 'none' }}
@@ -226,9 +260,9 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
           <Loader2 className="h-10 w-10 animate-spin text-neutral-600 dark:text-white/70" />
           <p className="text-sm text-neutral-600 dark:text-white/70">{t.processing}</p>
         </div>
-      ) : image ? (
+      ) : media ? (
         <>
-          {/* 图片显示区域 */}
+          {/* 媒体显示区域 */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{
@@ -237,21 +271,92 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
               willChange: 'transform'
             }}
           >
-            <img
-              src={image.src}
-              alt={label}
-              className="max-w-none select-none pointer-events-none"
-              draggable={false}
-            />
+            {media.type === 'image' ? (
+              <img
+                src={media.src}
+                alt={label}
+                className="max-w-none select-none pointer-events-none"
+                draggable={false}
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={media.src}
+                className="max-w-none select-none pointer-events-none"
+                loop
+                muted={videoControls?.isMuted}
+                playsInline
+                onLoadedMetadata={(e) => {
+                  if (onVideoControlChange) {
+                    onVideoControlChange({ duration: e.currentTarget.duration });
+                  }
+                }}
+                onTimeUpdate={() => {
+                  if (onVideoControlChange && !videoControls?.isPlaying) {
+                     // 仅在非播放状态下（如手动拖动进度条同步）更新时间，避免循环触发
+                  }
+                }}
+              />
+            )}
           </div>
-          {/* 图片尺寸信息 */}
+
+          {/* 视频控制栏 */}
+          {media.type === 'video' && videoControls && onVideoControlChange && (
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+              <LiquidGlass
+                radius={12}
+                frost={0.1}
+                className="flex items-center gap-2 px-3 py-1.5"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-neutral-800 dark:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onVideoControlChange({ isPlaying: !videoControls.isPlaying });
+                  }}
+                >
+                  {videoControls.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </Button>
+
+                <div className="flex flex-col w-32 gap-1">
+                  <input
+                    type="range"
+                    min={0}
+                    max={videoControls.duration || 100}
+                    step={0.01}
+                    value={videoControls.currentTime}
+                    onChange={(e) => {
+                      onVideoControlChange({ currentTime: parseFloat(e.target.value) });
+                    }}
+                    className="w-full h-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-neutral-800 dark:accent-white"
+                  />
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-neutral-800 dark:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onVideoControlChange({ isMuted: !videoControls.isMuted });
+                  }}
+                >
+                  {videoControls.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </LiquidGlass>
+            </div>
+          )}
+
+          {/* 媒体尺寸信息 */}
           <LiquidGlass
             radius={12}
             frost={0.1}
             containerClassName="absolute bottom-3 left-3"
             className="px-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-white"
           >
-            {image.width} × {image.height}
+            {media.width} × {media.height} {media.type === 'video' && `(${Math.floor(videoControls?.currentTime || 0)}s / ${Math.floor(videoControls?.duration || 0)}s)`}
           </LiquidGlass>
           {/* 删除按钮 */}
           <LiquidGlass
@@ -281,7 +386,7 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
               <p className="text-sm">{t.dropOrClick}</p>
             </div>
           </div>
-          <input type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
+          <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileInput} />
         </label>
       )}
     </div>
@@ -301,9 +406,17 @@ function ImagePanel({ image, onUpload, onDelete, viewState, onViewChange, label,
  */
 export function ImageCompare() {
   const { t, locale, setLocale } = useI18n();
-  // 左右图片状态
-  const [leftImage, setLeftImage] = useState<ImageInfo | null>(null);
-  const [rightImage, setRightImage] = useState<ImageInfo | null>(null);
+  // 左右媒体状态
+  const [leftMedia, setLeftMedia] = useState<MediaInfo | null>(null);
+  const [rightMedia, setRightMedia] = useState<MediaInfo | null>(null);
+
+  // 视频控制状态
+  const [videoControls, setVideoControls] = useState<VideoControls>({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    isMuted: true
+  });
 
   // 加载状态
   const [leftLoading, setLeftLoading] = useState(false);
@@ -330,6 +443,29 @@ export function ImageCompare() {
     offsetX: 0,
     offsetY: 0
   });
+
+  /**
+   * 处理视频控制变化
+   */
+  const handleVideoControlChange = useCallback((newControls: Partial<VideoControls>) => {
+    setVideoControls(prev => ({ ...prev, ...newControls }));
+  }, []);
+
+  /**
+   * 视频播放同步
+   */
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (videoControls.isPlaying) {
+      interval = setInterval(() => {
+        setVideoControls(prev => ({
+          ...prev,
+          currentTime: prev.currentTime + 0.05 // 估算时间，实际由各自 video 标签的 useEffect 同步
+        }));
+      }, 50);
+    }
+    return () => clearInterval(interval);
+  }, [videoControls.isPlaying]);
 
   /**
    * 处理视图变化
@@ -376,17 +512,17 @@ export function ImageCompare() {
   // 管理 Blob URL，防止内存泄漏
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
-  // 使用 ref 存储图片信息，避免闭包问题
-  const leftImageRef = useRef<ImageInfo | null>(null);
-  const rightImageRef = useRef<ImageInfo | null>(null);
+  // 使用 ref 存储媒体信息，避免闭包问题
+  const leftMediaRef = useRef<MediaInfo | null>(null);
+  const rightMediaRef = useRef<MediaInfo | null>(null);
 
   useEffect(() => {
-    leftImageRef.current = leftImage;
-  }, [leftImage]);
+    leftMediaRef.current = leftMedia;
+  }, [leftMedia]);
 
   useEffect(() => {
-    rightImageRef.current = rightImage;
-  }, [rightImage]);
+    rightMediaRef.current = rightMedia;
+  }, [rightMedia]);
 
   // 监听系统深色模式变化
   useEffect(() => {
@@ -402,23 +538,23 @@ export function ImageCompare() {
 
   /**
    * 计算基础缩放比例
-   * 使图片适应容器大小
+   * 使媒体适应容器大小
    */
-  const calculateBaseScale = useCallback((imgWidth: number, imgHeight: number) => {
+  const calculateBaseScale = useCallback((mediaWidth: number, mediaHeight: number) => {
     const container = containerRef.current;
     if (!container) { return 1; }
 
     const containerWidth = container.clientWidth / 2 - 32;
     const containerHeight = container.clientHeight - 32;
 
-    const scaleX = containerWidth / imgWidth;
-    const scaleY = containerHeight / imgHeight;
+    const scaleX = containerWidth / mediaWidth;
+    const scaleY = containerHeight / mediaHeight;
 
     return Math.min(scaleX, scaleY, 1);
   }, []);
 
   /**
-   * 处理图片上传
+   * 处理媒体上传
    */
   const handleUpload = useCallback(
     (file: File, side: 'left' | 'right') => {
@@ -429,51 +565,90 @@ export function ImageCompare() {
       }
 
       // 清理旧的 Blob URL
-      const oldUrl = side === 'left' ? leftImageRef.current?.src : rightImageRef.current?.src;
+      const oldUrl = side === 'left' ? leftMediaRef.current?.src : rightMediaRef.current?.src;
       if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
         URL.revokeObjectURL(oldUrl);
         objectUrlsRef.current.delete(oldUrl);
       }
 
       const objectUrl = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith('video/');
 
       return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
+        if (isVideo) {
+          const video = document.createElement('video');
+          video.onloadedmetadata = () => {
+            const baseScale = calculateBaseScale(video.videoWidth, video.videoHeight);
+            objectUrlsRef.current.add(objectUrl);
 
-          objectUrlsRef.current.add(objectUrl);
+            const mediaInfo: MediaInfo = {
+              src: objectUrl,
+              width: video.videoWidth,
+              height: video.videoHeight,
+              baseScale,
+              type: 'video'
+            };
 
-          const imageInfo: ImageInfo = {
-            src: objectUrl,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-            baseScale
+            if (side === 'left') {
+              setLeftMedia(mediaInfo);
+              setLeftLoading(false);
+            } else {
+              setRightMedia(mediaInfo);
+              setRightLoading(false);
+            }
+            resolve(mediaInfo);
+          };
+          video.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            if (side === 'left') {
+              setLeftLoading(false);
+            } else {
+              setRightLoading(false);
+            }
+            setToast({ message: t.loadError, type: 'error' });
+            setTimeout(() => setToast(null), 3000);
+            reject(new Error('Video load failed'));
+          };
+          video.src = objectUrl;
+        } else {
+          const img = new Image();
+          img.onload = () => {
+            const baseScale = calculateBaseScale(img.naturalWidth, img.naturalHeight);
+
+            objectUrlsRef.current.add(objectUrl);
+
+            const mediaInfo: MediaInfo = {
+              src: objectUrl,
+              width: img.naturalWidth,
+              height: img.naturalHeight,
+              baseScale,
+              type: 'image'
+            };
+
+            if (side === 'left') {
+              setLeftMedia(mediaInfo);
+              setLeftLoading(false);
+            } else {
+              setRightMedia(mediaInfo);
+              setRightLoading(false);
+            }
+            resolve(mediaInfo);
           };
 
-          if (side === 'left') {
-            setLeftImage(imageInfo);
-            setLeftLoading(false);
-          } else {
-            setRightImage(imageInfo);
-            setRightLoading(false);
-          }
-          resolve(imageInfo);
-        };
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            if (side === 'left') {
+              setLeftLoading(false);
+            } else {
+              setRightLoading(false);
+            }
+            setToast({ message: t.loadError, type: 'error' });
+            setTimeout(() => setToast(null), 3000);
+            reject(new Error('Image load failed'));
+          };
 
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-          if (side === 'left') {
-            setLeftLoading(false);
-          } else {
-            setRightLoading(false);
-          }
-          setToast({ message: t.loadError, type: 'error' });
-          setTimeout(() => setToast(null), 3000);
-          reject(new Error('Image load failed'));
-        };
-
-        img.src = objectUrl;
+          img.src = objectUrl;
+        }
       });
     },
     [calculateBaseScale, t]
@@ -490,7 +665,7 @@ export function ImageCompare() {
   }, []);
 
   /**
-   * 放大图片
+   * 放大媒体
    */
   const handleZoomIn = useCallback(() => {
     const newStateFn = (prev: ViewState) => ({
@@ -503,7 +678,7 @@ export function ImageCompare() {
   }, []);
 
   /**
-   * 缩小图片
+   * 缩小媒体
    */
   const handleZoomOut = useCallback(() => {
     const newStateFn = (prev: ViewState) => ({
@@ -515,7 +690,7 @@ export function ImageCompare() {
     setRightViewState(newStateFn);
   }, []);
 
-  const hasImages = leftImage || rightImage;
+  const hasMedia = leftMedia || rightMedia;
   const isLoading = leftLoading || rightLoading;
 
   /**
@@ -536,36 +711,42 @@ export function ImageCompare() {
   }, [cleanupAllUrls]);
 
   /**
-   * 删除单张图片
+   * 删除单侧媒体
    */
-  const handleDeleteImage = useCallback(
+  const handleDeleteMedia = useCallback(
     (side: 'left' | 'right') => {
-      const imageRef = side === 'left' ? leftImageRef : rightImageRef;
-      const oldUrl = imageRef.current?.src;
+      const mediaRef = side === 'left' ? leftMediaRef : rightMediaRef;
+      const oldUrl = mediaRef.current?.src;
       if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
         URL.revokeObjectURL(oldUrl);
         objectUrlsRef.current.delete(oldUrl);
       }
 
       if (side === 'left') {
-        setLeftImage(null);
+        setLeftMedia(null);
       } else {
-        setRightImage(null);
+        setRightMedia(null);
       }
     },
     []
   );
 
   /**
-   * 清空所有图片
+   * 清空所有媒体
    */
   const handleClearAll = useCallback(() => {
     cleanupAllUrls();
-    setLeftImage(null);
-    setRightImage(null);
+    setLeftMedia(null);
+    setRightMedia(null);
     setLeftLoading(false);
     setRightLoading(false);
     handleReset();
+    setVideoControls({
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      isMuted: true
+    });
   }, [cleanupAllUrls, handleReset]);
 
   /**
@@ -598,28 +779,25 @@ export function ImageCompare() {
       const items = e.clipboardData?.items;
       if (!items) {return;}
 
-      // 检查剪贴板中是否有图片
-      let hasImage = false;
+      // 检查剪贴板中是否有图片或视频
+      let hasTarget = false;
+      let targetItem: DataTransferItem | undefined;
+
       for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith('image/')) {
-          hasImage = true;
+        if (items[i].type.startsWith('image/') || items[i].type.startsWith('video/')) {
+          hasTarget = true;
+          targetItem = items[i];
           break;
         }
       }
 
-      if (!hasImage) {
+      if (!hasTarget || !targetItem) {
         return;
       }
 
       e.preventDefault();
 
-      const imageItem = Array.from(items).find((item) => item.type.startsWith('image/'));
-      if (!imageItem) {
-        showToast(t.pasteErrorNoImage, 'error');
-        return;
-      }
-
-      const file = imageItem.getAsFile();
+      const file = targetItem.getAsFile();
       if (!file) {
         showToast(t.pasteError, 'error');
         return;
@@ -627,9 +805,9 @@ export function ImageCompare() {
 
       // 确定上传到哪一侧
       let targetSide: 'left' | 'right';
-      if (!leftImage) {
+      if (!leftMedia) {
         targetSide = 'left';
-      } else if (!rightImage) {
+      } else if (!rightMedia) {
         targetSide = 'right';
       } else {
         targetSide = 'left';
@@ -643,7 +821,7 @@ export function ImageCompare() {
         showToast(t.pasteError, 'error');
       }
     },
-    [handleUpload, leftImage, rightImage, showToast, t]
+    [handleUpload, leftMedia, rightMedia, showToast, t]
   );
 
   // 监听粘贴事件（仅在桌面端）
@@ -686,7 +864,7 @@ export function ImageCompare() {
           size="icon"
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleZoomOut}
-          disabled={!hasImages || isLoading}
+          disabled={!hasMedia || isLoading}
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
@@ -696,7 +874,7 @@ export function ImageCompare() {
           size="icon"
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleZoomIn}
-          disabled={!hasImages || isLoading}
+          disabled={!hasMedia || isLoading}
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -706,7 +884,7 @@ export function ImageCompare() {
           size="icon"
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleReset}
-          disabled={!hasImages || isLoading}
+          disabled={!hasMedia || isLoading}
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
@@ -723,7 +901,7 @@ export function ImageCompare() {
               : 'text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50'
           )}
           onClick={() => setIsSynced(!isSynced)}
-          disabled={!hasImages || isLoading}
+          disabled={!hasMedia || isLoading}
           title={isSynced ? t.unlockView : t.lockView}
         >
           {isSynced ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
@@ -736,7 +914,7 @@ export function ImageCompare() {
           size="sm"
           className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleClearAll}
-          disabled={!hasImages || isLoading}
+          disabled={!hasMedia || isLoading}
         >
           {t.clear}
         </Button>
@@ -764,34 +942,38 @@ export function ImageCompare() {
         </Button>
       </LiquidGlass>
 
-      {/* 图片显示区域 */}
+      {/* 媒体显示区域 */}
       <div ref={containerRef} className="flex-1 flex min-h-0 relative">
-        {/* 左侧图片面板 */}
+        {/* 左侧媒体面板 */}
         <div className="flex-1 bg-secondary">
-          <ImagePanel
-            image={leftImage}
-            onUpload={(file) => handleUpload(file, 'left')}
-            onDelete={() => handleDeleteImage('left')}
+          <MediaPanel
+            media={leftMedia}
+            onUpload={(file: File) => handleUpload(file, 'left')}
+            onDelete={() => handleDeleteMedia('left')}
             viewState={leftViewState}
-            onViewChange={(newState) => handleViewChange('left', newState)}
+            onViewChange={(newState: ViewState) => handleViewChange('left', newState)}
             label="A"
             isLoading={leftLoading}
             t={t}
+            videoControls={leftMedia?.type === 'video' ? videoControls : undefined}
+            onVideoControlChange={handleVideoControlChange}
           />
         </div>
         {/* 中间分隔线 */}
         <div className="w-px bg-white/20 dark:bg-white/10 backdrop-blur-sm" />
-        {/* 右侧图片面板 */}
+        {/* 右侧媒体面板 */}
         <div className="flex-1 bg-secondary">
-          <ImagePanel
-            image={rightImage}
-            onUpload={(file) => handleUpload(file, 'right')}
-            onDelete={() => handleDeleteImage('right')}
+          <MediaPanel
+            media={rightMedia}
+            onUpload={(file: File) => handleUpload(file, 'right')}
+            onDelete={() => handleDeleteMedia('right')}
             viewState={rightViewState}
-            onViewChange={(newState) => handleViewChange('right', newState)}
+            onViewChange={(newState: ViewState) => handleViewChange('right', newState)}
             label="B"
             isLoading={rightLoading}
             t={t}
+            videoControls={rightMedia?.type === 'video' ? videoControls : undefined}
+            onVideoControlChange={handleVideoControlChange}
           />
         </div>
       </div>
