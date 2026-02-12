@@ -23,7 +23,7 @@ export function MobileNotSupported() {
   const { t } = useI18n();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 md:hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 md:hidden bg-background/60 backdrop-blur-md">
       {/* 玻璃效果卡片 */}
       <LiquidGlass
         radius={24}
