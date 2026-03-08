@@ -32,6 +32,7 @@
 - **严格 TypeScript**：`tsconfig.json` 中启用了 `strict: true`。避免使用 `any`。对象结构优先使用 `interface`，联合类型/别名优先使用 `type`。
 - **路径别名**：始终使用 `@/*` 进行内部导入（例如 `import { cn } from '@/lib/utils'`）。
 - **不变性**：优先使用 `const` 而非 `let`。对 React 状态使用函数式更新（`setState(prev => ...)`）。
+- **注释**：在代码中添加简单的中文注释，说明复杂逻辑或关键步骤。
 
 ### 导入和格式化
 - **导入顺序**：
