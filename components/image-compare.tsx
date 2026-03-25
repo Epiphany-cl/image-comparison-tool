@@ -55,6 +55,11 @@ interface VideoControls {
   isMuted: boolean;
 }
 
+type KeyboardMediaMode = 'none' | 'image' | 'video' | 'mixed';
+
+const IMAGE_KEYBOARD_PAN_STEP = 32;
+const VIDEO_FRAME_STEP = 0.5;
+
 /**
  * 媒体面板属性接口
  */
@@ -445,6 +450,34 @@ export function ImageCompare() {
   });
 
   /**
+   * 判断当前键盘操作应控制的媒体类型
+   */
+  const getKeyboardMediaMode = useCallback((left: MediaInfo | null, right: MediaInfo | null): KeyboardMediaMode => {
+    const leftType = left?.type;
+    const rightType = right?.type;
+
+    if (!leftType && !rightType) {
+      return 'none';
+    }
+
+    if (leftType && rightType && leftType !== rightType) {
+      return 'mixed';
+    }
+
+    return leftType ?? rightType ?? 'none';
+  }, []);
+
+  /**
+   * 限制视频进度范围，避免超出边界
+   */
+  const clampTime = useCallback((time: number, duration: number) => {
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return Math.max(time, 0);
+    }
+    return Math.min(Math.max(time, 0), duration);
+  }, []);
+
+  /**
    * 处理视频控制变化
    */
   const handleVideoControlChange = useCallback((newControls: Partial<VideoControls>) => {
@@ -832,6 +865,91 @@ export function ImageCompare() {
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
   }, [handlePaste]);
+
+  // 监听键盘快捷键（仅在桌面端）
+  useEffect(() => {
+    const isDesktop = window.innerWidth >= 768;
+    if (!isDesktop) {return;}
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target;
+      if (showHelp) {
+        return;
+      }
+
+      if (
+        target instanceof HTMLElement &&
+        (
+          target.closest('input, textarea, select, button, [contenteditable="true"]') ||
+          target.isContentEditable
+        )
+      ) {
+        return;
+      }
+
+      const mediaMode = getKeyboardMediaMode(leftMedia, rightMedia);
+
+      if (e.key === ' ') {
+        const hasVideo = leftMedia?.type === 'video' || rightMedia?.type === 'video';
+        if (!hasVideo) {
+          return;
+        }
+
+        e.preventDefault();
+        setVideoControls((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
+        return;
+      }
+
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        return;
+      }
+
+      if (mediaMode === 'mixed' || mediaMode === 'none') {
+        return;
+      }
+
+      e.preventDefault();
+
+      if (mediaMode === 'image') {
+        let deltaX = 0;
+        let deltaY = 0;
+
+        if (e.key === 'ArrowLeft') { deltaX = -IMAGE_KEYBOARD_PAN_STEP; }
+        if (e.key === 'ArrowRight') { deltaX = IMAGE_KEYBOARD_PAN_STEP; }
+        if (e.key === 'ArrowUp') { deltaY = -IMAGE_KEYBOARD_PAN_STEP; }
+        if (e.key === 'ArrowDown') { deltaY = IMAGE_KEYBOARD_PAN_STEP; }
+
+        if (leftMedia?.type === 'image') {
+          setLeftViewState((prev) => ({
+            ...prev,
+            offsetX: prev.offsetX + deltaX,
+            offsetY: prev.offsetY + deltaY
+          }));
+        }
+
+        if (rightMedia?.type === 'image') {
+          setRightViewState((prev) => ({
+            ...prev,
+            offsetX: prev.offsetX + deltaX,
+            offsetY: prev.offsetY + deltaY
+          }));
+        }
+
+        return;
+      }
+
+      if (mediaMode === 'video' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        const delta = e.key === 'ArrowLeft' ? -VIDEO_FRAME_STEP : VIDEO_FRAME_STEP;
+        setVideoControls((prev) => ({
+          ...prev,
+          currentTime: clampTime(prev.currentTime + delta, prev.duration)
+        }));
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [clampTime, getKeyboardMediaMode, leftMedia, rightMedia, showHelp]);
 
   return (
     <div className="flex flex-col h-screen bg-background md:flex">

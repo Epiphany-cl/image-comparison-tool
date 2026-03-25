@@ -16,7 +16,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, HelpCircle, Upload, MousePointer, Hand, RotateCcw, CheckCircle, AlertCircle, Unlock } from 'lucide-react';
+import { X, HelpCircle, Upload, MousePointer, Hand, RotateCcw, CheckCircle, AlertCircle, Unlock, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -164,6 +164,18 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <div>
                   <h3 className="font-semibold text-sm mb-0.5">{t.unlockView}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">{t.alignImagesDesc}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 border border-cyan-500/10">
+                <div className="shrink-0 w-6 h-6 rounded bg-cyan-500/20 flex items-center justify-center">
+                  <Keyboard className="w-3.5 h-3.5 text-cyan-500" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-sm mb-0.5">{t.keyboardShortcuts}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{t.keyboardImageDesc}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{t.keyboardVideoDesc}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{t.keyboardMixedDesc}</p>
                 </div>
               </div>
             </div>

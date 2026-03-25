@@ -65,6 +65,10 @@ export const en: Translations = {
     trackpadPan: 'Trackpad Pan',
     trackpadPanDesc: 'Use trackpad two-finger swipe to pan the content',
     alignImagesDesc: 'Click the unlock button in the top bar to move each side independently for alignment',
+    keyboardShortcuts: 'Keyboard Shortcuts',
+    keyboardImageDesc: 'In image mode, use the arrow keys to move any loaded images in sync',
+    keyboardVideoDesc: 'In video mode, use Left/Right to step the timeline by 1/2 second and Space to play or pause',
+    keyboardMixedDesc: 'When one side is an image and the other is a video, arrow keys are disabled to avoid conflicts',
 
     // 帮助 - 常见问题
     faq: 'FAQ',

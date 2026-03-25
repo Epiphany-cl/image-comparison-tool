@@ -61,6 +61,10 @@ export interface Translations {
     trackpadPan: string;
     trackpadPanDesc: string;
     alignImagesDesc: string;
+    keyboardShortcuts: string;
+    keyboardImageDesc: string;
+    keyboardVideoDesc: string;
+    keyboardMixedDesc: string;
 
     // 帮助 - 常见问题
     faq: string;
@@ -135,6 +139,10 @@ export const zh: Translations = {
     trackpadPan: '触控板平移',
     trackpadPanDesc: '使用触控板双指滑动可平移内容',
     alignImagesDesc: '点击顶部解锁按钮，可独立移动单侧内容进行位置对齐',
+    keyboardShortcuts: '键盘操作',
+    keyboardImageDesc: '图片模式下，可使用方向键同步移动已加载的图片',
+    keyboardVideoDesc: '视频模式下，可使用左右方向键按 1/2 秒逐步调整进度，空格键播放或暂停',
+    keyboardMixedDesc: '当左右两侧分别加载图片和视频时，方向键将被禁用以避免冲突',
 
     // 帮助 - 常见问题
     faq: '常见问题',
