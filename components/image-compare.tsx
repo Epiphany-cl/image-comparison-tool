@@ -880,7 +880,7 @@ export function ImageCompare() {
       if (
         target instanceof HTMLElement &&
         (
-          target.closest('input, textarea, select, button, [contenteditable="true"]') ||
+          target.closest('input, textarea, select, [contenteditable="true"]') ||
           target.isContentEditable
         )
       ) {
@@ -896,6 +896,7 @@ export function ImageCompare() {
         }
 
         e.preventDefault();
+        e.stopPropagation();
         setVideoControls((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
         return;
       }
@@ -909,6 +910,7 @@ export function ImageCompare() {
       }
 
       e.preventDefault();
+      e.stopPropagation();
 
       if (mediaMode === 'image') {
         let deltaX = 0;
