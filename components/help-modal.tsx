@@ -17,6 +17,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, HelpCircle, Upload, MousePointer, Hand, RotateCcw, CheckCircle, AlertCircle, Unlock, Keyboard } from 'lucide-react';
+import packageJson from '@/package.json';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ type TabId = 'getting-started' | 'gestures' | 'faq';
  */
 export function HelpModal({ isOpen, onClose }: HelpModalProps) {
   const { t } = useI18n();
+  const version = packageJson.version;
   // 当前激活的标签页
   const [activeTab, setActiveTab] = useState<TabId>('getting-started');
 
@@ -232,7 +234,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
             </div>
             <div>
               <h2 className="font-semibold text-lg text-foreground">{t.helpTitle}</h2>
-              <p className="text-xs text-muted-foreground">{t.helpDescription}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <p>{t.helpDescription}</p>
+                <span className="inline-flex items-center rounded-full bg-secondary/60 px-2 py-0.5 font-mono text-[11px]">
+                  {t.versionLabel} v{version}
+                </span>
+              </div>
             </div>
           </div>
           <Button

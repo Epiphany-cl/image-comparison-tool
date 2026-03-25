@@ -1,6 +1,6 @@
 {
   "name": "image-comparison-tool",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "clean": "rm -rf node_modules .next out public/sw.js public/sw.js.map public/workbox-*.js public/swe-worker-*.js",

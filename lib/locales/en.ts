@@ -46,6 +46,7 @@ export const en: Translations = {
     help: 'Help',
     helpTitle: 'Media Comparison Tool Guide',
     helpDescription: 'Quick guide to get started with image and video comparison',
+    versionLabel: 'Version',
 
     // 帮助 - 开始使用
     gettingStarted: 'Getting Started',

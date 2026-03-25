@@ -42,6 +42,7 @@ export interface Translations {
     help: string;
     helpTitle: string;
     helpDescription: string;
+    versionLabel: string;
 
     // 帮助 - 开始使用
     gettingStarted: string;
@@ -120,6 +121,7 @@ export const zh: Translations = {
     help: '使用说明',
     helpTitle: '多媒体对比工具使用指南',
     helpDescription: '快速了解如何使用此工具进行图片和视频对比',
+    versionLabel: '版本',
 
     // 帮助 - 开始使用
     gettingStarted: '开始使用',
