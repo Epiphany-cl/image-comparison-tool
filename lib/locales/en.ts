@@ -19,6 +19,9 @@ export const en: Translations = {
     // 通用 UI 文本
     imageCompare: 'Media Compare',
     clear: 'Clear',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    reset: 'Reset',
     lockView: 'Lock View (Sync Move)',
     unlockView: 'Unlock View (Allow Independent Move)',
 

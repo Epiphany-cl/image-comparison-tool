@@ -58,6 +58,12 @@ interface VideoControls {
 
 type KeyboardMediaMode = 'none' | 'image' | 'video' | 'mixed';
 
+interface DragMemo {
+  x: number;
+  y: number;
+  blocked: boolean;
+}
+
 const IMAGE_KEYBOARD_PAN_STEP = 32;
 const VIDEO_FRAME_STEP = 0.5;
 const FILE_NAME_HEAD_LEN = 14;
@@ -139,6 +145,22 @@ function fitFileNameToWidth(fileName: string, maxWidth: number, font: string) {
   return `${ellipsis}${extension || fileName.slice(-Math.min(fileName.length, FILE_NAME_TAIL_LEN))}`;
 }
 
+function isTouchInput(event: Event) {
+  if (typeof PointerEvent !== 'undefined' && event instanceof PointerEvent) {
+    return event.pointerType === 'touch';
+  }
+
+  return typeof TouchEvent !== 'undefined' && event instanceof TouchEvent;
+}
+
+function isGestureBlockedTarget(target: EventTarget | null) {
+  return target instanceof Element && target.closest('[data-gesture-blocker="true"]') !== null;
+}
+
+function isVideoProgressTarget(target: EventTarget | null) {
+  return target instanceof HTMLInputElement && target.dataset.videoProgress === 'true';
+}
+
 /**
  * 媒体面板属性接口
  */
@@ -151,6 +173,7 @@ interface MediaPanelProps {
   label: string;                             // 面板标签（'A' 或 'B'）
   isLoading: boolean;                        // 是否正在加载
   t: Translations;                           // 翻译文本
+  activeTouchCountRef: { current: number };  // 当前页面触摸点数量
   videoControls?: VideoControls;             // 视频控制状态
   onVideoControlChange?: (controls: Partial<VideoControls>) => void; // 视频控制变化回调
 }
@@ -166,7 +189,7 @@ interface MediaPanelProps {
  * - 提供删除按钮
  * - 提供视频播放控制
  */
-function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label, isLoading, t, videoControls, onVideoControlChange }: MediaPanelProps) {
+function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label, isLoading, t, activeTouchCountRef, videoControls, onVideoControlChange }: MediaPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [panelWidth, setPanelWidth] = useState(0);
@@ -253,21 +276,41 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
   useGesture(
     {
       // 拖拽处理：平移媒体
-      onDrag: ({ first, movement: [mx, my], memo = { x: 0, y: 0 } }) => {
-        if (!media) { return; }
-        if (first) {
-          memo = { x: viewState.offsetX, y: viewState.offsetY };
+      onDrag: ({ first, movement: [mx, my], memo, event }) => {
+        if (!media) { return memo; }
+        if (isGestureBlockedTarget(event.target)) {
+          return first || !memo ? { x: viewState.offsetX, y: viewState.offsetY, blocked: true } : memo;
         }
+
+        const isMultiTouchDrag = isTouchInput(event) && activeTouchCountRef.current > 1;
+        const currentMemo: DragMemo = first || !memo
+          ? { x: viewState.offsetX, y: viewState.offsetY, blocked: isMultiTouchDrag }
+          : memo;
+
+        if (isMultiTouchDrag) {
+          currentMemo.blocked = true;
+        }
+
+        if (currentMemo.blocked) {
+          return currentMemo;
+        }
+
+        if (first) {
+          currentMemo.x = viewState.offsetX;
+          currentMemo.y = viewState.offsetY;
+        }
+
         onViewChange({
           ...viewState,
-          offsetX: memo.x + mx,
-          offsetY: memo.y + my
+          offsetX: currentMemo.x + mx,
+          offsetY: currentMemo.y + my
         });
-        return memo;
+        return currentMemo;
       },
       // 捏合缩放处理：以捏合中心点为基准缩放
       onPinch: ({ first, origin: [ox, oy], movement: [ms], memo, event }) => {
         if (!media) { return; }
+        if (isGestureBlockedTarget(event.target)) { return memo; }
         event.preventDefault();
 
         if (first) {
@@ -304,6 +347,7 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
       // 滚轮处理：区分触控板平移和鼠标滚轮缩放
       onWheel: ({ event, delta: [dx, dy] }) => {
         if (!media) { return; }
+        if (isGestureBlockedTarget(event.target)) { return; }
         if (event.ctrlKey) { return; }
 
         // 水平滚动时阻止默认行为
@@ -416,7 +460,10 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
 
           {/* 视频控制栏 */}
           {media.type === 'video' && videoControls && onVideoControlChange && (
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+            <div
+              data-gesture-blocker="true"
+              className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
+            >
               <LiquidGlass
                 radius={12}
                 frost={0.1}
@@ -436,6 +483,7 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
 
                 <div className="flex flex-col w-32 gap-1">
                   <input
+                    data-video-progress="true"
                     type="range"
                     min={0}
                     max={videoControls.duration || 100}
@@ -444,7 +492,14 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
                     onChange={(e) => {
                       onVideoControlChange({ currentTime: parseFloat(e.target.value) });
                     }}
-                    className="w-full h-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-neutral-800 dark:accent-white"
+                    onPointerUp={(e) => {
+                      // 拖动后释放焦点，避免空格键继续操作进度条。
+                      e.currentTarget.blur();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.blur();
+                    }}
+                    className="w-full h-2 md:h-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-neutral-800 dark:accent-white"
                   />
                 </div>
 
@@ -463,36 +518,40 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
             </div>
           )}
 
-          {/* 媒体尺寸信息 */}
-          <LiquidGlass
-            radius={12}
-            frost={0.1}
-            containerClassName="absolute bottom-3 left-3"
-            className="px-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-white"
-          >
-            {media.width} × {media.height} {media.type === 'video' && `(${Math.floor(videoControls?.currentTime || 0)}s / ${Math.floor(videoControls?.duration || 0)}s)`}
-          </LiquidGlass>
-          {/* 文件名信息 */}
-          <LiquidGlass
-            radius={12}
-            frost={0.1}
-            containerClassName="absolute bottom-3 right-3 max-w-[calc(100%-6rem)]"
-            className="px-3 py-1.5 text-xs text-neutral-800 dark:text-white"
-          >
-            <span
-              className="block max-w-full whitespace-nowrap"
-              title={media.fileName}
+          {/* 底部信息栏：同一容器内排布，避免长文件名覆盖分辨率。 */}
+          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
+            {/* 媒体尺寸信息 */}
+            <LiquidGlass
+              radius={12}
+              frost={0.1}
+              containerClassName="shrink-0"
+              className="px-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-white"
             >
-              {fileName}
-            </span>
-          </LiquidGlass>
+              {media.width} × {media.height} {media.type === 'video' && `(${Math.floor(videoControls?.currentTime || 0)}s / ${Math.floor(videoControls?.duration || 0)}s)`}
+            </LiquidGlass>
+            {/* 文件名信息 */}
+            <LiquidGlass
+              radius={12}
+              frost={0.1}
+              containerClassName="min-w-0 max-w-full shrink"
+              className="px-3 py-1.5 text-xs text-neutral-800 dark:text-white"
+            >
+              <span
+                className="block max-w-full truncate"
+                title={media.fileName}
+              >
+                {fileName}
+              </span>
+            </LiquidGlass>
+          </div>
           {/* 删除按钮 */}
           <LiquidGlass
             radius={8}
             frost={0.1}
             containerClassName={cn(
-              'absolute top-3 h-7 w-7',
-              label === 'A' ? 'left-3' : 'right-3'
+              'absolute z-20 h-7 w-7',
+              // 移动端顶部工具栏会覆盖上方面板，A 面板删除按钮需要避开。
+              label === 'A' ? 'left-3 top-16 md:top-3' : 'right-3 top-3'
             )}
           >
             <Button
@@ -571,6 +630,16 @@ export function ImageCompare() {
     offsetX: 0,
     offsetY: 0
   });
+  const leftViewStateRef = useRef(leftViewState);
+  const rightViewStateRef = useRef(rightViewState);
+
+  useEffect(() => {
+    leftViewStateRef.current = leftViewState;
+  }, [leftViewState]);
+
+  useEffect(() => {
+    rightViewStateRef.current = rightViewState;
+  }, [rightViewState]);
 
   /**
    * 判断当前键盘操作应控制的媒体类型
@@ -625,45 +694,31 @@ export function ImageCompare() {
 
   /**
    * 处理视图变化
-   * 在同步模式下，一侧的变化会同步到另一侧
+   * 在同步模式下，一侧的新状态会直接同步到另一侧，避免变化量累计误差。
    */
   const handleViewChange = useCallback((side: 'left' | 'right', newState: ViewState) => {
     if (side === 'left') {
-      const oldState = leftViewState;
+      leftViewStateRef.current = newState;
       setLeftViewState(newState);
 
       if (isSynced) {
-        // 计算缩放比例和偏移量变化，同步到右侧
-        const scaleRatio = newState.scale / oldState.scale;
-        const dx = newState.offsetX - oldState.offsetX;
-        const dy = newState.offsetY - oldState.offsetY;
-
-        setRightViewState(prev => ({
-          scale: prev.scale * scaleRatio,
-          offsetX: prev.offsetX + dx,
-          offsetY: prev.offsetY + dy
-        }));
+        rightViewStateRef.current = newState;
+        setRightViewState(newState);
       }
     } else {
-      const oldState = rightViewState;
+      rightViewStateRef.current = newState;
       setRightViewState(newState);
 
       if (isSynced) {
-        // 计算缩放比例和偏移量变化，同步到左侧
-        const scaleRatio = newState.scale / oldState.scale;
-        const dx = newState.offsetX - oldState.offsetX;
-        const dy = newState.offsetY - oldState.offsetY;
-
-        setLeftViewState(prev => ({
-          scale: prev.scale * scaleRatio,
-          offsetX: prev.offsetX + dx,
-          offsetY: prev.offsetY + dy
-        }));
+        leftViewStateRef.current = newState;
+        setLeftViewState(newState);
       }
     }
-  }, [isSynced, leftViewState, rightViewState]);
+  }, [isSynced]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const activeTouchIdsRef = useRef<Set<number>>(new Set());
+  const activeTouchCountRef = useRef(0);
 
   // 管理 Blob URL，防止内存泄漏
   const objectUrlsRef = useRef<Set<string>>(new Set());
@@ -679,6 +734,63 @@ export function ImageCompare() {
   useEffect(() => {
     rightMediaRef.current = rightMedia;
   }, [rightMedia]);
+
+  /**
+   * 全局跟踪触摸点数量，避免两个面板同时触发单指拖拽造成同步冲突。
+   */
+  useEffect(() => {
+    if (typeof PointerEvent === 'undefined') {
+      const handleTouchChange = (event: TouchEvent) => {
+        activeTouchCountRef.current = event.touches.length;
+      };
+
+      window.addEventListener('touchstart', handleTouchChange, { passive: true });
+      window.addEventListener('touchmove', handleTouchChange, { passive: true });
+      window.addEventListener('touchend', handleTouchChange, { passive: true });
+      window.addEventListener('touchcancel', handleTouchChange, { passive: true });
+
+      return () => {
+        window.removeEventListener('touchstart', handleTouchChange);
+        window.removeEventListener('touchmove', handleTouchChange);
+        window.removeEventListener('touchend', handleTouchChange);
+        window.removeEventListener('touchcancel', handleTouchChange);
+      };
+    }
+
+    const updateTouchCount = () => {
+      activeTouchCountRef.current = activeTouchIdsRef.current.size;
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch') {
+        return;
+      }
+
+      activeTouchIdsRef.current.add(event.pointerId);
+      updateTouchCount();
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch') {
+        return;
+      }
+
+      activeTouchIdsRef.current.delete(event.pointerId);
+      updateTouchCount();
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      activeTouchIdsRef.current.clear();
+      activeTouchCountRef.current = 0;
+    };
+  }, []);
 
   // 监听系统深色模式变化
   useEffect(() => {
@@ -700,8 +812,10 @@ export function ImageCompare() {
     const container = containerRef.current;
     if (!container) { return 1; }
 
-    const containerWidth = container.clientWidth / 2 - 32;
-    const containerHeight = container.clientHeight - 32;
+    const isDesktop = container.clientWidth >= 768;
+    // 移动端上下堆叠，每个面板约占媒体区域一半高度。
+    const containerWidth = (isDesktop ? container.clientWidth / 2 : container.clientWidth) - 32;
+    const containerHeight = (isDesktop ? container.clientHeight : container.clientHeight / 2) - 32;
 
     const scaleX = containerWidth / mediaWidth;
     const scaleY = containerHeight / mediaHeight;
@@ -817,6 +931,8 @@ export function ImageCompare() {
    */
   const handleReset = useCallback(() => {
     const initialState = { scale: 1, offsetX: 0, offsetY: 0 };
+    leftViewStateRef.current = initialState;
+    rightViewStateRef.current = initialState;
     setLeftViewState(initialState);
     setRightViewState(initialState);
     setIsSynced(true);
@@ -831,8 +947,16 @@ export function ImageCompare() {
       scale: Math.min(prev.scale * 1.25, 10)
     });
 
-    setLeftViewState(newStateFn);
-    setRightViewState(newStateFn);
+    setLeftViewState((prev) => {
+      const nextState = newStateFn(prev);
+      leftViewStateRef.current = nextState;
+      return nextState;
+    });
+    setRightViewState((prev) => {
+      const nextState = newStateFn(prev);
+      rightViewStateRef.current = nextState;
+      return nextState;
+    });
   }, []);
 
   /**
@@ -844,8 +968,16 @@ export function ImageCompare() {
       scale: Math.max(prev.scale / 1.25, 0.1)
     });
 
-    setLeftViewState(newStateFn);
-    setRightViewState(newStateFn);
+    setLeftViewState((prev) => {
+      const nextState = newStateFn(prev);
+      leftViewStateRef.current = nextState;
+      return nextState;
+    });
+    setRightViewState((prev) => {
+      const nextState = newStateFn(prev);
+      rightViewStateRef.current = nextState;
+      return nextState;
+    });
   }, []);
 
   const hasMedia = leftMedia || rightMedia;
@@ -982,11 +1114,8 @@ export function ImageCompare() {
     [handleUpload, leftMedia, rightMedia, showToast, t]
   );
 
-  // 监听粘贴事件（仅在桌面端）
+  // 监听粘贴事件，支持移动端外接键盘或浏览器剪贴板事件。
   useEffect(() => {
-    const isDesktop = window.innerWidth >= 768;
-    if (!isDesktop) {return;}
-
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
   }, [handlePaste]);
@@ -999,6 +1128,13 @@ export function ImageCompare() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target;
       if (showHelp) {
+        return;
+      }
+
+      if (e.key === ' ' && isVideoProgressTarget(target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setVideoControls((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
         return;
       }
 
@@ -1047,19 +1183,27 @@ export function ImageCompare() {
         if (e.key === 'ArrowDown') { deltaY = IMAGE_KEYBOARD_PAN_STEP; }
 
         if (leftMedia?.type === 'image') {
-          setLeftViewState((prev) => ({
-            ...prev,
-            offsetX: prev.offsetX + deltaX,
-            offsetY: prev.offsetY + deltaY
-          }));
+          setLeftViewState((prev) => {
+            const nextState = {
+              ...prev,
+              offsetX: prev.offsetX + deltaX,
+              offsetY: prev.offsetY + deltaY
+            };
+            leftViewStateRef.current = nextState;
+            return nextState;
+          });
         }
 
         if (rightMedia?.type === 'image') {
-          setRightViewState((prev) => ({
-            ...prev,
-            offsetX: prev.offsetX + deltaX,
-            offsetY: prev.offsetY + deltaY
-          }));
+          setRightViewState((prev) => {
+            const nextState = {
+              ...prev,
+              offsetX: prev.offsetX + deltaX,
+              offsetY: prev.offsetY + deltaY
+            };
+            rightViewStateRef.current = nextState;
+            return nextState;
+          });
         }
 
         return;
@@ -1079,16 +1223,16 @@ export function ImageCompare() {
   }, [clampTime, getKeyboardMediaMode, leftMedia, rightMedia, showHelp]);
 
   return (
-    <div className="flex flex-col h-screen bg-background md:flex">
+    <div className="flex h-dvh flex-col bg-background">
       {/* 顶部控制栏 */}
       <LiquidGlass
         radius={16}
         frost={0.1}
-        containerClassName="absolute top-3 left-1/2 -translate-x-1/2 z-10"
-        className="flex items-center gap-1 px-3 py-1.5"
+        containerClassName="absolute left-1/2 top-3 z-10 w-max max-w-[calc(100vw-1.5rem)] -translate-x-1/2"
+        className="flex w-max max-w-[calc(100vw-1.5rem)] items-center gap-1 overflow-x-auto px-2 py-1.5 md:max-w-none md:px-3"
       >
         {/* 标题 */}
-        <div className="flex items-center min-w-[120px] justify-center px-2">
+        <div className="hidden items-center min-w-[120px] justify-center px-2 md:flex">
           <div className="relative flex items-center justify-center">
             {isLoading && (
               <Loader2 className="h-3 w-3 animate-spin absolute -left-5" />
@@ -1098,7 +1242,7 @@ export function ImageCompare() {
             </span>
           </div>
         </div>
-        <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
+        <div className="hidden w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1 md:block" />
         {/* 缩放比例显示 */}
         <span className="text-xs text-neutral-600 dark:text-white/70 px-2 font-mono">
           {Math.round(leftViewState.scale * 100)}%
@@ -1110,6 +1254,7 @@ export function ImageCompare() {
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleZoomOut}
           disabled={!hasMedia || isLoading}
+          title={t.zoomOut}
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
@@ -1120,6 +1265,7 @@ export function ImageCompare() {
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleZoomIn}
           disabled={!hasMedia || isLoading}
+          title={t.zoomIn}
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -1130,6 +1276,7 @@ export function ImageCompare() {
           className="h-7 w-7 rounded-lg text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
           onClick={handleReset}
           disabled={!hasMedia || isLoading}
+          title={t.reset}
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
@@ -1157,40 +1304,44 @@ export function ImageCompare() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20"
+          className="h-7 w-7 rounded-lg px-0 text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 md:w-auto md:px-3"
           onClick={handleClearAll}
           disabled={!hasMedia || isLoading}
+          title={t.clear}
         >
-          {t.clear}
+          <X className="h-3.5 w-3.5 md:hidden" />
+          <span className="hidden md:inline">{t.clear}</span>
         </Button>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         {/* 语言切换按钮 */}
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 flex items-center gap-1"
+          className="h-7 w-7 rounded-lg px-0 text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 flex items-center gap-1 md:w-auto md:px-3"
           onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+          title={t.switchTo}
         >
           <Languages className="h-3.5 w-3.5" />
-          {t.switchTo}
+          <span className="hidden md:inline">{t.switchTo}</span>
         </Button>
         <div className="w-px h-4 bg-neutral-400/30 dark:bg-white/20 mx-1" />
         {/* 帮助按钮 */}
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 rounded-lg text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 flex items-center gap-1"
+          className="h-7 w-7 rounded-lg px-0 text-xs text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white hover:bg-white/30 dark:hover:bg-white/20 flex items-center gap-1 md:w-auto md:px-3"
           onClick={handleOpenHelp}
+          title={t.help}
         >
           <HelpCircle className="h-3.5 w-3.5" />
-          {t.help}
+          <span className="hidden md:inline">{t.help}</span>
         </Button>
       </LiquidGlass>
 
       {/* 媒体显示区域 */}
-      <div ref={containerRef} className="flex-1 flex min-h-0 relative">
+      <div ref={containerRef} className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         {/* 左侧媒体面板 */}
-        <div className="flex-1 bg-secondary">
+        <div className="min-h-0 flex-1 bg-secondary">
           <MediaPanel
             media={leftMedia}
             onUpload={(file: File) => handleUpload(file, 'left')}
@@ -1200,14 +1351,15 @@ export function ImageCompare() {
             label="A"
             isLoading={leftLoading}
             t={t}
+            activeTouchCountRef={activeTouchCountRef}
             videoControls={leftMedia?.type === 'video' ? videoControls : undefined}
             onVideoControlChange={handleVideoControlChange}
           />
         </div>
         {/* 中间分隔线 */}
-        <div className="w-px bg-white/20 dark:bg-white/10 backdrop-blur-sm" />
+        <div className="h-px w-full bg-white/20 backdrop-blur-sm dark:bg-white/10 md:h-auto md:w-px" />
         {/* 右侧媒体面板 */}
-        <div className="flex-1 bg-secondary">
+        <div className="min-h-0 flex-1 bg-secondary">
           <MediaPanel
             media={rightMedia}
             onUpload={(file: File) => handleUpload(file, 'right')}
@@ -1217,6 +1369,7 @@ export function ImageCompare() {
             label="B"
             isLoading={rightLoading}
             t={t}
+            activeTouchCountRef={activeTouchCountRef}
             videoControls={rightMedia?.type === 'video' ? videoControls : undefined}
             onVideoControlChange={handleVideoControlChange}
           />

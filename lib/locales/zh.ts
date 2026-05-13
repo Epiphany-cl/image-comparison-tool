@@ -15,6 +15,9 @@ export interface Translations {
     // 通用 UI 文本
     imageCompare: string;
     clear: string;
+    zoomIn: string;
+    zoomOut: string;
+    reset: string;
     lockView: string;
     unlockView: string;
 
@@ -94,6 +97,9 @@ export const zh: Translations = {
     // 通用 UI 文本
     imageCompare: '多媒体对比',
     clear: '清空',
+    zoomIn: '放大',
+    zoomOut: '缩小',
+    reset: '重置',
     lockView: '锁定视图（同步移动）',
     unlockView: '解锁视图（独立移动）',
 
