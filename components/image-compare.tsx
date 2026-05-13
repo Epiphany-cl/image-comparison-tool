@@ -14,7 +14,7 @@
 
 import type React from 'react';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, X, Loader2, Languages, CheckCircle, AlertCircle, HelpCircle, Lock, Unlock, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useGesture } from '@use-gesture/react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ interface ViewState {
  */
 interface MediaInfo {
   src: string;        // 媒体 URL（Blob URL）
+  fileName: string;   // 原始文件名
   width: number;      // 原始宽度
   height: number;     // 原始高度
   baseScale: number;  // 基础缩放比例（使媒体适应容器）
@@ -59,6 +60,84 @@ type KeyboardMediaMode = 'none' | 'image' | 'video' | 'mixed';
 
 const IMAGE_KEYBOARD_PAN_STEP = 32;
 const VIDEO_FRAME_STEP = 0.5;
+const FILE_NAME_HEAD_LEN = 14;
+const FILE_NAME_TAIL_LEN = 10;
+const FILE_NAME_FONT = '12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+const FILE_NAME_BUDGET_PADDING = 96;
+
+const textMeasureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+
+function measureTextWidth(text: string, font: string) {
+  const context = textMeasureCanvas?.getContext('2d');
+  if (!context) {
+    return text.length * 8;
+  }
+
+  context.font = font;
+  return context.measureText(text).width;
+}
+
+function fitFileNameToWidth(fileName: string, maxWidth: number, font: string) {
+  if (!fileName) {
+    return '';
+  }
+
+  if (maxWidth <= 0) {
+    return fileName;
+  }
+
+  if (measureTextWidth(fileName, font) <= maxWidth) {
+    return fileName;
+  }
+
+  const lastDotIndex = fileName.lastIndexOf('.');
+  const hasExtension = lastDotIndex > 0 && lastDotIndex < fileName.length - 1;
+  const baseName = hasExtension ? fileName.slice(0, lastDotIndex) : fileName;
+  const extension = hasExtension ? fileName.slice(lastDotIndex) : '';
+  const ellipsis = '…';
+
+  if (measureTextWidth(ellipsis + extension, font) >= maxWidth) {
+    let tailLength = Math.max(1, fileName.length - 1);
+
+    while (tailLength > 1) {
+      const candidate = `${ellipsis}${fileName.slice(-tailLength)}`;
+      if (measureTextWidth(candidate, font) <= maxWidth) {
+        return candidate;
+      }
+      tailLength -= 1;
+    }
+
+    return ellipsis;
+  }
+
+  let headLength = Math.min(FILE_NAME_HEAD_LEN, baseName.length);
+  let tailLength = Math.min(FILE_NAME_TAIL_LEN, baseName.length - headLength);
+
+  if (tailLength <= 0) {
+    tailLength = Math.min(FILE_NAME_TAIL_LEN, Math.max(baseName.length - 1, 1));
+    headLength = Math.max(baseName.length - tailLength, 1);
+  }
+
+  const minHeadLength = Math.min(3, Math.max(baseName.length - 1, 1));
+  const minTailLength = Math.min(3, Math.max(baseName.length - 1, 1));
+
+  while (headLength >= minHeadLength && tailLength >= minTailLength) {
+    const candidate = `${baseName.slice(0, headLength)}${ellipsis}${baseName.slice(-tailLength)}${extension}`;
+    if (measureTextWidth(candidate, font) <= maxWidth) {
+      return candidate;
+    }
+
+    if (headLength > minHeadLength) {
+      headLength -= 1;
+    } else if (tailLength > minTailLength) {
+      tailLength -= 1;
+    } else {
+      break;
+    }
+  }
+
+  return `${ellipsis}${extension || fileName.slice(-Math.min(fileName.length, FILE_NAME_TAIL_LEN))}`;
+}
 
 /**
  * 媒体面板属性接口
@@ -90,6 +169,7 @@ interface MediaPanelProps {
 function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label, isLoading, t, videoControls, onVideoControlChange }: MediaPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [panelWidth, setPanelWidth] = useState(0);
 
   /**
    * 处理拖拽上传
@@ -137,6 +217,35 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
       videoRef.current.muted = videoControls.isMuted;
     }
   }, [media?.type, videoControls]);
+
+  /**
+   * 监听面板宽度变化，用于计算文件名可用宽度
+   */
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateWidth = () => {
+      setPanelWidth(element.clientWidth);
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const fileName = useMemo(() => {
+    if (!media) {
+      return '';
+    }
+
+    return fitFileNameToWidth(media.fileName, Math.max(0, panelWidth - FILE_NAME_BUDGET_PADDING), FILE_NAME_FONT);
+  }, [media, panelWidth]);
 
   /**
    * 使用 @use-gesture/react 处理手势交互
@@ -362,6 +471,20 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
             className="px-3 py-1.5 text-xs font-mono text-neutral-800 dark:text-white"
           >
             {media.width} × {media.height} {media.type === 'video' && `(${Math.floor(videoControls?.currentTime || 0)}s / ${Math.floor(videoControls?.duration || 0)}s)`}
+          </LiquidGlass>
+          {/* 文件名信息 */}
+          <LiquidGlass
+            radius={12}
+            frost={0.1}
+            containerClassName="absolute bottom-3 right-3 max-w-[calc(100%-6rem)]"
+            className="px-3 py-1.5 text-xs text-neutral-800 dark:text-white"
+          >
+            <span
+              className="block max-w-full whitespace-nowrap"
+              title={media.fileName}
+            >
+              {fileName}
+            </span>
           </LiquidGlass>
           {/* 删除按钮 */}
           <LiquidGlass
@@ -616,6 +739,7 @@ export function ImageCompare() {
 
             const mediaInfo: MediaInfo = {
               src: objectUrl,
+              fileName: file.name,
               width: video.videoWidth,
               height: video.videoHeight,
               baseScale,
@@ -652,6 +776,7 @@ export function ImageCompare() {
 
             const mediaInfo: MediaInfo = {
               src: objectUrl,
+              fileName: file.name,
               width: img.naturalWidth,
               height: img.naturalHeight,
               baseScale,
