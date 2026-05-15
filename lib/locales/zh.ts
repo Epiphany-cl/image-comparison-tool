@@ -26,12 +26,6 @@ export interface Translations {
     dropOrClick: string;
     loadError: string;
 
-    // 移动端不支持提示
-    mobileNotSupported: {
-        title: string;
-        description: string;
-    };
-
     // 语言切换
     language: string;
     switchTo: string;
@@ -39,8 +33,6 @@ export interface Translations {
     // 粘贴功能
     pasteSuccess: string;
     pasteError: string;
-    pasteErrorNoImage: string;
-
     // 帮助系统
     help: string;
     helpTitle: string;
@@ -82,7 +74,6 @@ export interface Translations {
     faq4Answer: string;
 
     // 对话框按钮
-    dontShowAgain: string;
     close: string;
     gotIt: string;
 }
@@ -108,12 +99,6 @@ export const zh: Translations = {
     dropOrClick: '拖放或点击上传图片/视频',
     loadError: '加载失败，请检查文件格式',
 
-    // 移动端不支持提示
-    mobileNotSupported: {
-        title: '暂不支持移动设备',
-        description: '对比工具需要更大的屏幕空间来提供最佳体验，请使用电脑设备访问。'
-    },
-
     // 语言切换
     language: '中文',
     switchTo: 'EN',
@@ -121,8 +106,6 @@ export const zh: Translations = {
     // 粘贴功能
     pasteSuccess: '内容已粘贴到 {side}',
     pasteError: '粘贴失败，请确保已复制图片或视频',
-    pasteErrorNoImage: '剪贴板中未检测到可用的多媒体内容',
-
     // 帮助系统
     help: '使用说明',
     helpTitle: '多媒体对比工具使用指南',
@@ -164,7 +147,6 @@ export const zh: Translations = {
     faq4Answer: '所有文件都只在浏览器本地处理，不会上传到服务器。关闭浏览器后数据会自动清理，保障您的隐私安全。',
 
     // 对话框按钮
-    dontShowAgain: '不再显示',
     close: '关闭',
     gotIt: '明白了'
 };

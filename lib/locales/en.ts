@@ -30,12 +30,6 @@ export const en: Translations = {
     dropOrClick: 'Drop or click to upload images/videos',
     loadError: 'Failed to load, please check the file format',
 
-    // 移动端不支持提示
-    mobileNotSupported: {
-        title: 'Mobile Not Supported',
-        description: 'Comparison tool requires a larger screen for the best experience. Please use a desktop device.'
-    },
-
     // 语言切换
     language: 'English',
     switchTo: '中',
@@ -43,8 +37,6 @@ export const en: Translations = {
     // 粘贴功能
     pasteSuccess: 'Content pasted to {side}',
     pasteError: 'Paste failed, please ensure you have copied an image or video',
-    pasteErrorNoImage: 'No usable media detected in clipboard',
-
     // 帮助系统
     help: 'Help',
     helpTitle: 'Media Comparison Tool Guide',
@@ -86,7 +78,6 @@ export const en: Translations = {
     faq4Answer: 'All files are processed locally in your browser and never uploaded to any server. Data is automatically cleared when you close the browser.',
 
     // 对话框按钮
-    dontShowAgain: 'Don\'t show again',
     close: 'Close',
     gotIt: 'Got it'
 };
