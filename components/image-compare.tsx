@@ -57,6 +57,7 @@ interface VideoControls {
 }
 
 type KeyboardMediaMode = 'none' | 'image' | 'video' | 'mixed';
+type PanelSide = 'left' | 'right';
 
 interface DragMemo {
   x: number;
@@ -157,8 +158,21 @@ function isGestureBlockedTarget(target: EventTarget | null) {
   return target instanceof Element && target.closest('[data-gesture-blocker="true"]') !== null;
 }
 
-function isVideoProgressTarget(target: EventTarget | null) {
+function isVideoProgressTarget(target: EventTarget | null): target is HTMLInputElement {
   return target instanceof HTMLInputElement && target.dataset.videoProgress === 'true';
+}
+
+function isFinitePositiveNumber(value: number) {
+  return Number.isFinite(value) && value > 0;
+}
+
+function getVideoProgressSide(target: EventTarget | null): PanelSide | null {
+  if (!isVideoProgressTarget(target)) {
+    return null;
+  }
+
+  const side = target.dataset.videoSide;
+  return side === 'left' || side === 'right' ? side : null;
 }
 
 /**
@@ -170,12 +184,16 @@ interface MediaPanelProps {
   onDelete: () => void;                      // 删除回调
   viewState: ViewState;                      // 视图状态
   onViewChange: (state: ViewState) => void;  // 视图变化回调
+  side: PanelSide;                           // 面板侧别
   label: string;                             // 面板标签（'A' 或 'B'）
   isLoading: boolean;                        // 是否正在加载
   t: Translations;                           // 翻译文本
   activeTouchCountRef: { current: number };  // 当前页面触摸点数量
+  onActivate: () => void;                    // 激活当前面板
   videoControls?: VideoControls;             // 视频控制状态
   onVideoControlChange?: (controls: Partial<VideoControls>) => void; // 视频控制变化回调
+  onTogglePlay?: (side: PanelSide) => void;  // 按侧播放/暂停
+  onSeek?: (time: number) => void;           // 按比例同步拖动进度条
 }
 
 /**
@@ -189,9 +207,11 @@ interface MediaPanelProps {
  * - 提供删除按钮
  * - 提供视频播放控制
  */
-function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label, isLoading, t, activeTouchCountRef, videoControls, onVideoControlChange }: MediaPanelProps) {
+function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, side, label, isLoading, t, activeTouchCountRef, onActivate, videoControls, onVideoControlChange, onTogglePlay, onSeek }: MediaPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoControlsRef = useRef(videoControls);
+  videoControlsRef.current = videoControls;
   const [panelWidth, setPanelWidth] = useState(0);
 
   /**
@@ -199,13 +219,14 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
    */
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
+      onActivate();
       e.preventDefault();
       const file = e.dataTransfer.files[0];
       if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
         onUpload(file);
       }
     },
-    [onUpload]
+    [onActivate, onUpload]
   );
 
   /**
@@ -213,13 +234,14 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
    */
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      onActivate();
       const file = e.target.files?.[0];
       if (file) {
         onUpload(file);
       }
       e.target.value = '';
     },
-    [onUpload]
+    [onActivate, onUpload]
   );
 
   /**
@@ -240,6 +262,26 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
       videoRef.current.muted = videoControls.isMuted;
     }
   }, [media?.type, videoControls]);
+
+  /**
+   * 视频播放定时器：驱动 currentTime 前进
+   */
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (videoControls?.isPlaying) {
+      interval = setInterval(() => {
+        const current = videoControlsRef.current;
+        if (!current || !onVideoControlChange) {return;}
+        const newTime = current.currentTime + 0.05;
+        if (newTime >= current.duration) {
+          onVideoControlChange({ isPlaying: false, currentTime: current.duration });
+        } else {
+          onVideoControlChange({ currentTime: newTime });
+        }
+      }, 50);
+    }
+    return () => clearInterval(interval);
+  }, [videoControls?.isPlaying, onVideoControlChange]);
 
   /**
    * 监听面板宽度变化，用于计算文件名可用宽度
@@ -411,6 +453,8 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
       style={{ touchAction: 'none' }}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
+      onPointerDown={() => onActivate()}
+      onFocusCapture={() => onActivate()}
     >
       {/* 加载状态 */}
       {isLoading ? (
@@ -441,7 +485,6 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
                 ref={videoRef}
                 src={media.src}
                 className="max-w-none select-none pointer-events-none"
-                loop
                 muted={videoControls?.isMuted}
                 playsInline
                 onLoadedMetadata={(e) => {
@@ -450,8 +493,13 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
                   }
                 }}
                 onTimeUpdate={() => {
-                  if (onVideoControlChange && !videoControls?.isPlaying) {
-                     // 仅在非播放状态下（如手动拖动进度条同步）更新时间，避免循环触发
+                  if (onVideoControlChange && videoRef.current) {
+                    onVideoControlChange({ currentTime: videoRef.current.currentTime });
+                  }
+                }}
+                onEnded={() => {
+                  if (onVideoControlChange) {
+                    onVideoControlChange({ isPlaying: false, currentTime: videoControlsRef.current?.duration || 0 });
                   }
                 }}
               />
@@ -475,7 +523,8 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
                   className="h-7 w-7 text-neutral-800 dark:text-white"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onVideoControlChange({ isPlaying: !videoControls.isPlaying });
+                    onActivate();
+                    onTogglePlay?.(side);
                   }}
                 >
                   {videoControls.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -484,13 +533,15 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
                 <div className="flex flex-col w-32 gap-1">
                   <input
                     data-video-progress="true"
+                    data-video-side={side}
                     type="range"
                     min={0}
                     max={videoControls.duration || 100}
                     step={0.01}
                     value={videoControls.currentTime}
                     onChange={(e) => {
-                      onVideoControlChange({ currentTime: parseFloat(e.target.value) });
+                      onActivate();
+                      onSeek?.(parseFloat(e.target.value));
                     }}
                     onPointerUp={(e) => {
                       // 拖动后释放焦点，避免空格键继续操作进度条。
@@ -509,6 +560,7 @@ function MediaPanel({ media, onUpload, onDelete, viewState, onViewChange, label,
                   className="h-7 w-7 text-neutral-800 dark:text-white"
                   onClick={(e) => {
                     e.stopPropagation();
+                    onActivate();
                     onVideoControlChange({ isMuted: !videoControls.isMuted });
                   }}
                 >
@@ -597,13 +649,9 @@ export function ImageCompare() {
   const [leftMedia, setLeftMedia] = useState<MediaInfo | null>(null);
   const [rightMedia, setRightMedia] = useState<MediaInfo | null>(null);
 
-  // 视频控制状态
-  const [videoControls, setVideoControls] = useState<VideoControls>({
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    isMuted: true
-  });
+  // 视频控制状态（每侧独立）
+  const [leftVideoControls, setLeftVideoControls] = useState<VideoControls | undefined>(undefined);
+  const [rightVideoControls, setRightVideoControls] = useState<VideoControls | undefined>(undefined);
 
   // 加载状态
   const [leftLoading, setLeftLoading] = useState(false);
@@ -617,6 +665,10 @@ export function ImageCompare() {
 
   // 同步模式状态
   const [isSynced, setIsSynced] = useState(true);
+  const [activePanel, setActivePanel] = useState<PanelSide>('left');
+
+  const leftHasVideo = leftMedia?.type === 'video';
+  const rightHasVideo = rightMedia?.type === 'video';
 
   // 左右视图状态
   const [leftViewState, setLeftViewState] = useState<ViewState>({
@@ -663,40 +715,154 @@ export function ImageCompare() {
    * 限制视频进度范围，避免超出边界
    */
   const clampTime = useCallback((time: number, duration: number) => {
-    if (!Number.isFinite(duration) || duration <= 0) {
-      return Math.max(time, 0);
+    const safeTime = Number.isFinite(time) ? Math.max(time, 0) : 0;
+    if (!isFinitePositiveNumber(duration)) {
+      return safeTime;
     }
-    return Math.min(Math.max(time, 0), duration);
+    return Math.min(safeTime, duration);
   }, []);
 
   /**
-   * 处理视频控制变化
+   * 处理单侧视频控制变化
    */
-  const handleVideoControlChange = useCallback((newControls: Partial<VideoControls>) => {
-    setVideoControls(prev => ({ ...prev, ...newControls }));
+  const handleLeftVideoControlChange = useCallback((newControls: Partial<VideoControls>) => {
+    setLeftVideoControls(prev => prev ? { ...prev, ...newControls } : prev);
+  }, []);
+
+  const handleRightVideoControlChange = useCallback((newControls: Partial<VideoControls>) => {
+    setRightVideoControls(prev => prev ? { ...prev, ...newControls } : prev);
   }, []);
 
   /**
-   * 视频播放同步
+   * 设置两侧视频播放状态，暂停时不会重播已停止的另一侧。
    */
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (videoControls.isPlaying) {
-      interval = setInterval(() => {
-        setVideoControls(prev => ({
-          ...prev,
-          currentTime: prev.currentTime + 0.05 // 估算时间，实际由各自 video 标签的 useEffect 同步
-        }));
-      }, 50);
+  const setAllVideoPlayback = useCallback((shouldPlay: boolean) => {
+    setLeftVideoControls(prev => prev ? {
+      ...prev,
+      isPlaying: shouldPlay,
+      currentTime: shouldPlay && prev.currentTime >= prev.duration ? 0 : prev.currentTime
+    } : prev);
+    setRightVideoControls(prev => prev ? {
+      ...prev,
+      isPlaying: shouldPlay,
+      currentTime: shouldPlay && prev.currentTime >= prev.duration ? 0 : prev.currentTime
+    } : prev);
+  }, []);
+
+  const toggleAllVideoPlayback = useCallback(() => {
+    const shouldPlay = !(leftVideoControls?.isPlaying || rightVideoControls?.isPlaying);
+    setAllVideoPlayback(shouldPlay);
+  }, [leftVideoControls?.isPlaying, rightVideoControls?.isPlaying, setAllVideoPlayback]);
+
+  /**
+   * 按比例同步拖动进度条
+   * 拖动一侧时，另一侧按相同比例跳转
+   */
+  const handleLeftSeek = useCallback((time: number) => {
+    setLeftVideoControls(prev => prev ? { ...prev, currentTime: clampTime(time, prev.duration) } : prev);
+    if (
+      isSynced &&
+      leftVideoControls &&
+      rightVideoControls &&
+      Number.isFinite(time) &&
+      isFinitePositiveNumber(leftVideoControls.duration) &&
+      isFinitePositiveNumber(rightVideoControls.duration)
+    ) {
+      // 只有两侧时长都有效时才按比例同步，避免异常元数据传播 NaN/Infinity。
+      const ratio = clampTime(time, leftVideoControls.duration) / leftVideoControls.duration;
+      setRightVideoControls(prev => prev && isFinitePositiveNumber(prev.duration) ? {
+        ...prev,
+        currentTime: clampTime(ratio * prev.duration, prev.duration)
+      } : prev);
     }
-    return () => clearInterval(interval);
-  }, [videoControls.isPlaying]);
+  }, [clampTime, isSynced, leftVideoControls, rightVideoControls]);
+
+  const handleRightSeek = useCallback((time: number) => {
+    setRightVideoControls(prev => prev ? { ...prev, currentTime: clampTime(time, prev.duration) } : prev);
+    if (
+      isSynced &&
+      leftVideoControls &&
+      rightVideoControls &&
+      Number.isFinite(time) &&
+      isFinitePositiveNumber(leftVideoControls.duration) &&
+      isFinitePositiveNumber(rightVideoControls.duration)
+    ) {
+      // 只有两侧时长都有效时才按比例同步，避免异常元数据传播 NaN/Infinity。
+      const ratio = clampTime(time, rightVideoControls.duration) / rightVideoControls.duration;
+      setLeftVideoControls(prev => prev && isFinitePositiveNumber(prev.duration) ? {
+        ...prev,
+        currentTime: clampTime(ratio * prev.duration, prev.duration)
+      } : prev);
+    }
+  }, [clampTime, isSynced, leftVideoControls, rightVideoControls]);
+
+  const handleTogglePlay = useCallback((side: PanelSide) => {
+    if (isSynced) {
+      toggleAllVideoPlayback();
+    } else {
+      const setter = side === 'left' ? setLeftVideoControls : setRightVideoControls;
+      setter(prev => prev ? {
+        ...prev,
+        isPlaying: !prev.isPlaying,
+        currentTime: !prev.isPlaying && prev.currentTime >= prev.duration ? 0 : prev.currentTime
+      } : prev);
+    }
+  }, [isSynced, toggleAllVideoPlayback]);
+
+  const getKeyboardVideoSide = useCallback((preferredSide?: PanelSide): PanelSide | null => {
+    const side = preferredSide ?? activePanel;
+    const hasPreferredVideo = side === 'left' ? leftHasVideo : rightHasVideo;
+
+    if (hasPreferredVideo) {
+      return side;
+    }
+
+    if (leftHasVideo) {
+      return 'left';
+    }
+
+    if (rightHasVideo) {
+      return 'right';
+    }
+
+    return null;
+  }, [activePanel, leftHasVideo, rightHasVideo]);
+
+  const toggleKeyboardVideoPlayback = useCallback((preferredSide?: PanelSide) => {
+    const side = getKeyboardVideoSide(preferredSide);
+    if (!side) {
+      return;
+    }
+
+    handleTogglePlay(side);
+  }, [getKeyboardVideoSide, handleTogglePlay]);
+
+  const seekKeyboardVideo = useCallback((delta: number) => {
+    const side = getKeyboardVideoSide();
+    if (!side) {
+      return;
+    }
+
+    const controls = side === 'left' ? leftVideoControls : rightVideoControls;
+    if (!controls) {
+      return;
+    }
+
+    const nextTime = clampTime(controls.currentTime + delta, controls.duration);
+    if (side === 'left') {
+      handleLeftSeek(nextTime);
+    } else {
+      handleRightSeek(nextTime);
+    }
+  }, [clampTime, getKeyboardVideoSide, handleLeftSeek, handleRightSeek, leftVideoControls, rightVideoControls]);
 
   /**
    * 处理视图变化
    * 在同步模式下，一侧的新状态会直接同步到另一侧，避免变化量累计误差。
    */
-  const handleViewChange = useCallback((side: 'left' | 'right', newState: ViewState) => {
+  const handleViewChange = useCallback((side: PanelSide, newState: ViewState) => {
+    setActivePanel(side);
+
     if (side === 'left') {
       leftViewStateRef.current = newState;
       setLeftViewState(newState);
@@ -827,7 +993,9 @@ export function ImageCompare() {
    * 处理媒体上传
    */
   const handleUpload = useCallback(
-    (file: File, side: 'left' | 'right') => {
+    (file: File, side: PanelSide) => {
+      setActivePanel(side);
+
       if (side === 'left') {
         setLeftLoading(true);
       } else {
@@ -860,11 +1028,20 @@ export function ImageCompare() {
               type: 'video'
             };
 
+            const videoControls: VideoControls = {
+              isPlaying: false,
+              currentTime: 0,
+              duration: video.duration,
+              isMuted: true
+            };
+
             if (side === 'left') {
               setLeftMedia(mediaInfo);
+              setLeftVideoControls(videoControls);
               setLeftLoading(false);
             } else {
               setRightMedia(mediaInfo);
+              setRightVideoControls(videoControls);
               setRightLoading(false);
             }
             resolve(mediaInfo);
@@ -899,9 +1076,11 @@ export function ImageCompare() {
 
             if (side === 'left') {
               setLeftMedia(mediaInfo);
+              setLeftVideoControls(undefined);
               setLeftLoading(false);
             } else {
               setRightMedia(mediaInfo);
+              setRightVideoControls(undefined);
               setRightLoading(false);
             }
             resolve(mediaInfo);
@@ -936,6 +1115,8 @@ export function ImageCompare() {
     setLeftViewState(initialState);
     setRightViewState(initialState);
     setIsSynced(true);
+    setLeftVideoControls(prev => prev ? { ...prev, currentTime: 0, isPlaying: false } : prev);
+    setRightVideoControls(prev => prev ? { ...prev, currentTime: 0, isPlaying: false } : prev);
   }, []);
 
   /**
@@ -1004,7 +1185,7 @@ export function ImageCompare() {
    * 删除单侧媒体
    */
   const handleDeleteMedia = useCallback(
-    (side: 'left' | 'right') => {
+    (side: PanelSide) => {
       const mediaRef = side === 'left' ? leftMediaRef : rightMediaRef;
       const oldUrl = mediaRef.current?.src;
       if (oldUrl && objectUrlsRef.current.has(oldUrl)) {
@@ -1012,10 +1193,14 @@ export function ImageCompare() {
         objectUrlsRef.current.delete(oldUrl);
       }
 
+      setActivePanel((prev) => prev === side ? (side === 'left' ? 'right' : 'left') : prev);
+
       if (side === 'left') {
         setLeftMedia(null);
+        setLeftVideoControls(undefined);
       } else {
         setRightMedia(null);
+        setRightVideoControls(undefined);
       }
     },
     []
@@ -1031,12 +1216,8 @@ export function ImageCompare() {
     setLeftLoading(false);
     setRightLoading(false);
     handleReset();
-    setVideoControls({
-      isPlaying: false,
-      currentTime: 0,
-      duration: 0,
-      isMuted: true
-    });
+    setLeftVideoControls(undefined);
+    setRightVideoControls(undefined);
   }, [cleanupAllUrls, handleReset]);
 
   /**
@@ -1094,7 +1275,7 @@ export function ImageCompare() {
       }
 
       // 确定上传到哪一侧
-      let targetSide: 'left' | 'right';
+      let targetSide: PanelSide;
       if (!leftMedia) {
         targetSide = 'left';
       } else if (!rightMedia) {
@@ -1134,7 +1315,7 @@ export function ImageCompare() {
       if (e.key === ' ' && isVideoProgressTarget(target)) {
         e.preventDefault();
         e.stopPropagation();
-        setVideoControls((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
+        toggleKeyboardVideoPlayback(getVideoProgressSide(target) ?? undefined);
         return;
       }
 
@@ -1151,14 +1332,14 @@ export function ImageCompare() {
       const mediaMode = getKeyboardMediaMode(leftMedia, rightMedia);
 
       if (e.key === ' ') {
-        const hasVideo = leftMedia?.type === 'video' || rightMedia?.type === 'video';
-        if (!hasVideo) {
+        const side = getKeyboardVideoSide();
+        if (!side) {
           return;
         }
 
         e.preventDefault();
         e.stopPropagation();
-        setVideoControls((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
+        toggleKeyboardVideoPlayback(side);
         return;
       }
 
@@ -1211,16 +1392,13 @@ export function ImageCompare() {
 
       if (mediaMode === 'video' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         const delta = e.key === 'ArrowLeft' ? -VIDEO_FRAME_STEP : VIDEO_FRAME_STEP;
-        setVideoControls((prev) => ({
-          ...prev,
-          currentTime: clampTime(prev.currentTime + delta, prev.duration)
-        }));
+        seekKeyboardVideo(delta);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [clampTime, getKeyboardMediaMode, leftMedia, rightMedia, showHelp]);
+  }, [getKeyboardMediaMode, getKeyboardVideoSide, leftMedia, rightMedia, seekKeyboardVideo, showHelp, toggleKeyboardVideoPlayback]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -1348,12 +1526,16 @@ export function ImageCompare() {
             onDelete={() => handleDeleteMedia('left')}
             viewState={leftViewState}
             onViewChange={(newState: ViewState) => handleViewChange('left', newState)}
+            side="left"
             label="A"
             isLoading={leftLoading}
             t={t}
             activeTouchCountRef={activeTouchCountRef}
-            videoControls={leftMedia?.type === 'video' ? videoControls : undefined}
-            onVideoControlChange={handleVideoControlChange}
+            onActivate={() => setActivePanel('left')}
+            videoControls={leftMedia?.type === 'video' ? leftVideoControls : undefined}
+            onVideoControlChange={handleLeftVideoControlChange}
+            onTogglePlay={handleTogglePlay}
+            onSeek={handleLeftSeek}
           />
         </div>
         {/* 中间分隔线 */}
@@ -1366,12 +1548,16 @@ export function ImageCompare() {
             onDelete={() => handleDeleteMedia('right')}
             viewState={rightViewState}
             onViewChange={(newState: ViewState) => handleViewChange('right', newState)}
+            side="right"
             label="B"
             isLoading={rightLoading}
             t={t}
             activeTouchCountRef={activeTouchCountRef}
-            videoControls={rightMedia?.type === 'video' ? videoControls : undefined}
-            onVideoControlChange={handleVideoControlChange}
+            onActivate={() => setActivePanel('right')}
+            videoControls={rightMedia?.type === 'video' ? rightVideoControls : undefined}
+            onVideoControlChange={handleRightVideoControlChange}
+            onTogglePlay={handleTogglePlay}
+            onSeek={handleRightSeek}
           />
         </div>
       </div>
