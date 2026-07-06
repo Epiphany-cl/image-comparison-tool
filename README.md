@@ -1,6 +1,6 @@
 # 多媒体对比工具
 
-[在线预览](https://epiphany-cl.github.io/image-comparison-tool/) | [备用链接](https://image-compare.chenlong716.dpdns.org/)
+[在线预览](https://chenlongapps.github.io/image-comparison-tool/) | [备用链接](https://image-compare.chenlong716.dpdns.org/)
 
 一款极简的在线图片与视频对比工具，专为桌面端优化，支持同步缩放、平移以及视频播放同步。
 
